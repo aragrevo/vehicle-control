@@ -1,0 +1,94 @@
+---
+import Badge from '../ui/Badge.astro';
+import Button from '../ui/Button.astro';
+import { getDocumentStatus, getStatusLabel, getStatusVariant, getDocumentTypeLabel } from '../../lib/documents';
+
+interface Props {
+  documents: Array<{
+    id: string;
+    vehicleId: string;
+    type: string;
+    expiresAt: number | null;
+    alertDaysBefore: number | null;
+    fileUrl: string | null;
+  }>;
+  vehicleId?: string;
+  showVehicleInfo?: boolean;
+  vehicleName?: string;
+}
+
+const { documents, vehicleId, showVehicleInfo = false, vehicleName } = Astro.props;
+---
+
+{documents.length === 0 ? (
+  <div class="text-center py-8">
+    <div class="text-4xl mb-3">📄</div>
+    <p class="text-gray-500">No hay documentos registrados</p>
+    {vehicleId && (
+      <Button href={`/documents?vehicle=${vehicleId}&new=true`} variant="primary" size="sm" class="mt-4">
+        Añadir documento
+      </Button>
+    )}
+  </div>
+) : (
+  <div class="space-y-3">
+    {documents.map((doc) => {
+      const status = getDocumentStatus(doc.expiresAt, doc.alertDaysBefore ?? 30);
+      return (
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center gap-4">
+            <div class="text-2xl">
+              {doc.type === 'itv' ? '🔍' : doc.type === 'insurance' ? '🛡️' : '📋'}
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <p class="text-sm font-medium text-gray-900">
+                  {getDocumentTypeLabel(doc.type)}
+                </p>
+                {showVehicleInfo && vehicleName && (
+                  <span class="text-xs text-gray-500">• {vehicleName}</span>
+                )}
+              </div>
+              {doc.expiresAt && (
+                <p class="text-xs text-gray-500 mt-0.5">
+                  Vence: {new Date(doc.expiresAt).toLocaleDateString('es-ES')}
+                  {status === 'expiring' && (
+                    <span class="text-yellow-600 ml-1">
+                      (en {Math.ceil((doc.expiresAt - Date.now()) / (1000 * 60 * 60 * 24))} días)
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <Badge variant={getStatusVariant(status)}>
+              {getStatusLabel(status)}
+            </Badge>
+            {doc.fileUrl && (
+              <a
+                href={doc.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-blue-600 hover:text-blue-700 text-sm"
+              >
+                Ver archivo
+              </a>
+            )}
+            <div class="flex items-center gap-1">
+              <Button href={`/documents/edit/${doc.id}`} variant="ghost" size="sm">
+                Editar
+              </Button>
+              <form method="POST" action={`/api/documents/${doc.id}/delete`}>
+                {vehicleId && <input type="hidden" name="vehicleId" value={vehicleId} />}
+                <Button type="submit" variant="ghost" size="sm" class="text-red-600 hover:text-red-700">
+                  Eliminar
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}

@@ -1,0 +1,169 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import Card from '../../components/ui/Card.astro';
+import Button from '../../components/ui/Button.astro';
+import Badge from '../../components/ui/Badge.astro';
+import DocumentForm from '../../components/documents/DocumentForm.astro';
+import DocumentList from '../../components/documents/DocumentList.astro';
+import { db } from '../../db/client';
+import { vehicles, documents } from '../../db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
+import { getDocumentStatus, getStatusVariant, getStatusLabel, getDocumentTypeLabel } from '../../lib/documents';
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/login');
+}
+
+const vehicleFilter = Astro.url.searchParams.get('vehicle');
+const showForm = Astro.url.searchParams.get('new') === 'true';
+
+const userVehicles = await db
+  .select()
+  .from(vehicles)
+  .where(eq(vehicles.userId, Astro.locals.user.id));
+
+const vehicleIds = userVehicles.map((v) => v.id);
+
+let userDocuments;
+if (vehicleFilter && vehicleIds.includes(vehicleFilter)) {
+  userDocuments = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.vehicleId, vehicleFilter));
+} else if (vehicleIds.length > 0) {
+  userDocuments = await db
+    .select()
+    .from(documents)
+    .where(inArray(documents.vehicleId, vehicleIds));
+} else {
+  userDocuments = [];
+}
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const vehicleId = formData.get('vehicleId')?.toString();
+  const type = formData.get('type')?.toString();
+  const expiresAt = formData.get('expiresAt')?.toString();
+  const alertDaysBefore = formData.get('alertDaysBefore')?.toString();
+  const fileUrl = formData.get('fileUrl')?.toString() || null;
+
+  if (vehicleId && type) {
+    await db.insert(documents).values({
+      id: createId(),
+      vehicleId,
+      type,
+      expiresAt: expiresAt ? new Date(expiresAt).getTime() : null,
+      alertDaysBefore: alertDaysBefore ? parseInt(alertDaysBefore) : 30,
+      fileUrl,
+    });
+
+    return Astro.redirect(vehicleFilter ? `/documents?vehicle=${vehicleFilter}` : '/documents');
+  }
+}
+
+const vehicleMap = new Map(userVehicles.map((v) => [v.id, `${v.brand} ${v.model}`]));
+
+const expiringDocs = userDocuments.filter((doc) => {
+  const status = getDocumentStatus(doc.expiresAt, doc.alertDaysBefore ?? 30);
+  return status === 'expiring' || status === 'expired';
+});
+---
+
+<AppLayout title="Documentos">
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Documentos</h1>
+        <p class="text-gray-500 mt-1">
+          {vehicleFilter
+            ? `Documentos de ${vehicleMap.get(vehicleFilter) || 'vehículo'}`
+            : 'Todos los documentos de tu flota'}
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        {vehicleFilter && (
+          <Button href="/documents" variant="secondary">
+            Ver todos
+          </Button>
+        )}
+        {!showForm && userVehicles.length > 0 && (
+          <Button
+            href={vehicleFilter ? `/documents?vehicle=${vehicleFilter}&new=true` : '/documents?new=true'}
+            variant="primary"
+          >
+            + Nuevo documento
+          </Button>
+        )}
+      </div>
+    </div>
+
+    {expiringDocs.length > 0 && (
+      <Card>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">
+          ⚠️ Atención requerida
+        </h2>
+        <div class="space-y-2">
+          {expiringDocs.map((doc) => {
+            const status = getDocumentStatus(doc.expiresAt, doc.alertDaysBefore ?? 30);
+            return (
+              <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                <div class="flex items-center gap-3">
+                  <Badge variant={getStatusVariant(status)}>
+                    {getStatusLabel(status)}
+                  </Badge>
+                  <span class="text-sm text-gray-700">
+                    {getDocumentTypeLabel(doc.type)} - {vehicleMap.get(doc.vehicleId)}
+                  </span>
+                </div>
+                {doc.expiresAt && (
+                  <span class="text-sm text-gray-500">
+                    {new Date(doc.expiresAt).toLocaleDateString('es-ES')}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    )}
+
+    {showForm && (
+      <Card>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Nuevo documento</h2>
+        {vehicleFilter ? (
+          <DocumentForm
+            vehicleId={vehicleFilter}
+            action={vehicleFilter ? `/documents?vehicle=${vehicleFilter}` : '/documents'}
+          />
+        ) : (
+          <div class="space-y-4">
+            <p class="text-sm text-gray-500">Selecciona un vehículo:</p>
+            <div class="grid gap-2">
+              {userVehicles.map((v) => (
+                <Button
+                  href={`/documents?vehicle=${v.id}&new=true`}
+                  variant="ghost"
+                  class="justify-start"
+                >
+                  {v.brand} {v.model} ({v.plate})
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
+    )}
+
+    <Card>
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+        {vehicleFilter ? 'Documentos del vehículo' : 'Todos los documentos'}
+      </h2>
+      <DocumentList
+        documents={userDocuments}
+        vehicleId={vehicleFilter || undefined}
+        showVehicleInfo={!vehicleFilter}
+      />
+    </Card>
+  </div>
+</AppLayout>

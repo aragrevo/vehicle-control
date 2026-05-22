@@ -1,0 +1,102 @@
+---
+import Button from '../ui/Button.astro';
+
+interface Props {
+  vehicleId: string;
+  document?: {
+    id: string;
+    type: string;
+    expiresAt: number | null;
+    alertDaysBefore: number | null;
+    fileUrl: string | null;
+  };
+  action: string;
+}
+
+const { vehicleId, document, action } = Astro.props;
+
+const documentTypes = [
+  { value: 'itv', label: 'ITV' },
+  { value: 'insurance', label: 'Seguro' },
+  { value: 'registration', label: 'Permiso de circulación' },
+];
+---
+
+<form method="POST" action={action} class="space-y-4">
+  <input type="hidden" name="vehicleId" value={vehicleId} />
+
+  <div>
+    <label for="type" class="block text-sm font-medium text-gray-700 mb-1">
+      Tipo de documento *
+    </label>
+    <select
+      id="type"
+      name="type"
+      required
+      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    >
+      <option value="">Seleccionar...</option>
+      {documentTypes.map((type) => (
+        <option
+          value={type.value}
+          selected={document?.type === type.value}
+        >
+          {type.label}
+        </option>
+      ))}
+    </select>
+  </div>
+
+  <div class="grid gap-4 md:grid-cols-2">
+    <div>
+      <label for="expiresAt" class="block text-sm font-medium text-gray-700 mb-1">
+        Fecha de caducidad
+      </label>
+      <input
+        type="date"
+        id="expiresAt"
+        name="expiresAt"
+        value={document?.expiresAt ? new Date(document.expiresAt).toISOString().split('T')[0] : ''}
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+    </div>
+
+    <div>
+      <label for="alertDaysBefore" class="block text-sm font-medium text-gray-700 mb-1">
+        Días de aviso previo
+      </label>
+      <input
+        type="number"
+        id="alertDaysBefore"
+        name="alertDaysBefore"
+        min="1"
+        max="365"
+        value={document?.alertDaysBefore || 30}
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      />
+    </div>
+  </div>
+
+  <div>
+    <label for="fileUrl" class="block text-sm font-medium text-gray-700 mb-1">
+      URL del archivo (opcional)
+    </label>
+    <input
+      type="url"
+      id="fileUrl"
+      name="fileUrl"
+      value={document?.fileUrl || ''}
+      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      placeholder="https://..."
+    />
+  </div>
+
+  <div class="flex items-center gap-4 pt-4">
+    <Button type="submit" variant="primary">
+      {document ? 'Guardar cambios' : 'Añadir documento'}
+    </Button>
+    <Button href={`/documents`} variant="ghost">
+      Cancelar
+    </Button>
+  </div>
+</form>
