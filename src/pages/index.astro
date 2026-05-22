@@ -1,0 +1,9 @@
+---
+import AppLayout from '../layouts/AppLayout.astro';
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/login');
+}
+
+return Astro.redirect('/vehicles');
+---
