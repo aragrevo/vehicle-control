@@ -68,20 +68,27 @@ const expiringDocs = userDocuments.filter((doc) => {
   const status = getDocumentStatus(doc.expiresAt, doc.alertDaysBefore ?? 30);
   return status === 'expiring' || status === 'expired';
 });
+
+const statusIcons = {
+  valid: '✓',
+  expiring: '⚠',
+  expired: '✕',
+  unknown: '?',
+};
 ---
 
 <AppLayout title="Documentos">
-  <div class="space-y-6">
+  <div class="space-y-lg">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Documentos</h1>
-        <p class="text-gray-500 mt-1">
+        <h1 class="text-headline-lg text-on-surface">Documentos</h1>
+        <p class="text-body-lg text-on-surface-variant mt-xs">
           {vehicleFilter
             ? `Documentos de ${vehicleMap.get(vehicleFilter) || 'vehículo'}`
             : 'Todos los documentos de tu flota'}
         </p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-sm">
         {vehicleFilter && (
           <Button href="/documents" variant="secondary">
             Ver todos
@@ -100,24 +107,25 @@ const expiringDocs = userDocuments.filter((doc) => {
 
     {expiringDocs.length > 0 && (
       <Card>
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">
-          ⚠️ Atención requerida
+        <h2 class="text-headline-sm text-on-surface mb-md flex items-center gap-sm">
+          <span class="text-warning">⚠</span>
+          Atención requerida
         </h2>
-        <div class="space-y-2">
+        <div class="space-y-xs">
           {expiringDocs.map((doc) => {
             const status = getDocumentStatus(doc.expiresAt, doc.alertDaysBefore ?? 30);
             return (
-              <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                <div class="flex items-center gap-3">
-                  <Badge variant={getStatusVariant(status)}>
+              <div class="flex items-center justify-between p-sm bg-warning/5 border border-warning/20 rounded-md">
+                <div class="flex items-center gap-sm">
+                  <Badge variant={getStatusVariant(status)} icon={statusIcons[status]}>
                     {getStatusLabel(status)}
                   </Badge>
-                  <span class="text-sm text-gray-700">
+                  <span class="text-body-md text-on-surface">
                     {getDocumentTypeLabel(doc.type)} - {vehicleMap.get(doc.vehicleId)}
                   </span>
                 </div>
                 {doc.expiresAt && (
-                  <span class="text-sm text-gray-500">
+                  <span class="text-body-md text-on-surface-variant font-mono">
                     {new Date(doc.expiresAt).toLocaleDateString('es-ES')}
                   </span>
                 )}
@@ -130,23 +138,24 @@ const expiringDocs = userDocuments.filter((doc) => {
 
     {showForm && (
       <Card>
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Nuevo documento</h2>
+        <h2 class="text-headline-sm text-on-surface mb-md">Nuevo documento</h2>
         {vehicleFilter ? (
           <DocumentForm
             vehicleId={vehicleFilter}
             action={vehicleFilter ? `/documents?vehicle=${vehicleFilter}` : '/documents'}
           />
         ) : (
-          <div class="space-y-4">
-            <p class="text-sm text-gray-500">Selecciona un vehículo:</p>
-            <div class="grid gap-2">
+          <div class="space-y-md">
+            <p class="text-body-md text-on-surface-variant">Selecciona un vehículo:</p>
+            <div class="grid gap-sm">
               {userVehicles.map((v) => (
                 <Button
                   href={`/documents?vehicle=${v.id}&new=true`}
                   variant="ghost"
                   class="justify-start"
                 >
-                  {v.brand} {v.model} ({v.plate})
+                  🚗 {v.brand} {v.model}
+                  <span class="font-mono text-primary ml-sm">{v.plate}</span>
                 </Button>
               ))}
             </div>
@@ -156,7 +165,7 @@ const expiringDocs = userDocuments.filter((doc) => {
     )}
 
     <Card>
-      <h2 class="text-lg font-semibold text-gray-900 mb-4">
+      <h2 class="text-headline-sm text-on-surface mb-md">
         {vehicleFilter ? 'Documentos del vehículo' : 'Todos los documentos'}
       </h2>
       <DocumentList
