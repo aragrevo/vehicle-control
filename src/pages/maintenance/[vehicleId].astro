@@ -1,0 +1,98 @@
+---
+import AppLayout from '../../layouts/AppLayout.astro';
+import Card from '../../components/ui/Card.astro';
+import Button from '../../components/ui/Button.astro';
+import MaintenanceForm from '../../components/maintenance/MaintenanceForm.astro';
+import MaintenanceList from '../../components/maintenance/MaintenanceList.astro';
+import { db } from '../../db/client';
+import { vehicles, maintenances } from '../../db/schema';
+import { eq, and, desc } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/login');
+}
+
+const { vehicleId } = Astro.params;
+const showForm = Astro.url.searchParams.get('new') === 'true';
+
+if (!vehicleId) {
+  return Astro.redirect('/vehicles');
+}
+
+const [vehicle] = await db
+  .select()
+  .from(vehicles)
+  .where(and(eq(vehicles.id, vehicleId), eq(vehicles.userId, Astro.locals.user.id)))
+  .limit(1);
+
+if (!vehicle) {
+  return Astro.redirect('/vehicles');
+}
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const type = formData.get('type')?.toString();
+  const description = formData.get('description')?.toString() || null;
+  const date = formData.get('date')?.toString();
+  const km = formData.get('km')?.toString();
+  const cost = formData.get('cost')?.toString();
+
+  if (type) {
+    await db.insert(maintenances).values({
+      id: createId(),
+      vehicleId,
+      type,
+      description,
+      date: date ? new Date(date).getTime() : Date.now(),
+      km: km ? parseInt(km) : null,
+      cost: cost ? parseFloat(cost) : null,
+    });
+
+    return Astro.redirect(`/maintenance/${vehicleId}`);
+  }
+}
+
+const vehicleMaintenances = await db
+  .select()
+  .from(maintenances)
+  .where(eq(maintenances.vehicleId, vehicleId))
+  .orderBy(desc(maintenances.date));
+---
+
+<AppLayout title={`Mantenimiento - ${vehicle.brand} ${vehicle.model}`}>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="flex items-center gap-3 mb-1">
+          <a href={`/vehicles/${vehicleId}`} class="text-gray-500 hover:text-gray-700">
+            ← Volver
+          </a>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900">
+          Mantenimiento
+        </h1>
+        <p class="text-gray-500">
+          {vehicle.brand} {vehicle.model} ({vehicle.plate})
+        </p>
+      </div>
+      {!showForm && (
+        <Button href={`/maintenance/${vehicleId}?new=true`} variant="primary">
+          + Nuevo mantenimiento
+        </Button>
+      )}
+    </div>
+
+    {showForm && (
+      <Card>
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Nuevo mantenimiento</h2>
+        <MaintenanceForm vehicleId={vehicleId} action={`/maintenance/${vehicleId}`} />
+      </Card>
+    )}
+
+    <Card>
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Historial</h2>
+      <MaintenanceList maintenances={vehicleMaintenances} vehicleId={vehicleId} />
+    </Card>
+  </div>
+</AppLayout>
