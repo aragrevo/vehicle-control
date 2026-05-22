@@ -25,10 +25,10 @@ const maintenanceTypes: Record<string, string> = {
 ---
 
 {maintenances.length === 0 ? (
-  <div class="text-center py-8">
-    <div class="text-4xl mb-3">🔧</div>
-    <p class="text-gray-500">No hay mantenimientos registrados</p>
-    <Button href={`/maintenance/${vehicleId}?new=true`} variant="primary" size="sm" class="mt-4">
+  <div class="text-center py-lg">
+    <div class="text-4xl mb-sm">🔧</div>
+    <p class="text-body-lg text-on-surface-variant">No hay mantenimientos registrados</p>
+    <Button href={`/maintenance/${vehicleId}?new=true`} variant="primary" size="sm" class="mt-md">
       Añadir mantenimiento
     </Button>
   </div>
@@ -36,41 +36,41 @@ const maintenanceTypes: Record<string, string> = {
   <div class="overflow-x-auto">
     <table class="w-full">
       <thead>
-        <tr class="border-b border-gray-200">
-          <th class="text-left text-xs font-medium text-gray-500 uppercase pb-3">Tipo</th>
-          <th class="text-left text-xs font-medium text-gray-500 uppercase pb-3">Descripción</th>
-          <th class="text-left text-xs font-medium text-gray-500 uppercase pb-3">Fecha</th>
-          <th class="text-left text-xs font-medium text-gray-500 uppercase pb-3">Km</th>
-          <th class="text-right text-xs font-medium text-gray-500 uppercase pb-3">Coste</th>
-          <th class="text-right text-xs font-medium text-gray-500 uppercase pb-3">Acciones</th>
+        <tr class="border-b border-outline-variant">
+          <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Tipo</th>
+          <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Descripción</th>
+          <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Fecha</th>
+          <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Km</th>
+          <th class="text-right text-label-md text-on-surface-variant uppercase pb-sm">Coste</th>
+          <th class="text-right text-label-md text-on-surface-variant uppercase pb-sm">Acciones</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-100">
+      <tbody class="divide-y divide-outline-variant">
         {maintenances.map((m) => (
-          <tr>
-            <td class="py-3 text-sm font-medium text-gray-900">
+          <tr class="hover:bg-surface-container-high transition-colors">
+            <td class="py-sm text-body-md text-on-surface font-medium">
               {maintenanceTypes[m.type] || m.type}
             </td>
-            <td class="py-3 text-sm text-gray-500 max-w-xs truncate">
+            <td class="py-sm text-body-md text-on-surface-variant max-w-xs truncate">
               {m.description || '-'}
             </td>
-            <td class="py-3 text-sm text-gray-500">
+            <td class="py-sm text-body-md text-on-surface-variant">
               {m.date ? new Date(m.date).toLocaleDateString('es-ES') : '-'}
             </td>
-            <td class="py-3 text-sm text-gray-500">
+            <td class="py-sm font-mono text-data-mono text-on-surface-variant">
               {m.km?.toLocaleString() || '-'}
             </td>
-            <td class="py-3 text-sm text-gray-900 text-right">
+            <td class="py-sm text-body-md text-on-surface text-right font-mono">
               {m.cost ? `${m.cost.toFixed(2)} €` : '-'}
             </td>
-            <td class="py-3 text-right">
-              <div class="flex items-center justify-end gap-2">
+            <td class="py-sm text-right">
+              <div class="flex items-center justify-end gap-xs">
                 <Button href={`/maintenance/${vehicleId}/edit/${m.id}`} variant="ghost" size="sm">
                   Editar
                 </Button>
                 <form method="POST" action={`/api/maintenance/${m.id}/delete`}>
                   <input type="hidden" name="vehicleId" value={vehicleId} />
-                  <Button type="submit" variant="ghost" size="sm" class="text-red-600 hover:text-red-700">
+                  <Button type="submit" variant="ghost" size="sm" class="text-error hover:text-error">
                     Eliminar
                   </Button>
                 </form>
