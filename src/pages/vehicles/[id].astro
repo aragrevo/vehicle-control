@@ -66,26 +66,48 @@ const statusVariants = {
   valid: 'success',
   expiring: 'warning',
   expired: 'danger',
-  unknown: 'gray',
+  unknown: 'neutral',
 } as const;
+
+const statusLabels = {
+  valid: 'Vigente',
+  expiring: 'Vence pronto',
+  expired: 'Caducado',
+  unknown: 'Sin fecha',
+};
+
+const statusIcons = {
+  valid: '✓',
+  expiring: '⚠',
+  expired: '✕',
+  unknown: '?',
+};
 ---
 
 <AppLayout title={`${vehicle.brand} ${vehicle.model}`}>
-  <div class="space-y-6">
+  <div class="space-y-lg">
     {/* Header */}
     <div class="flex items-start justify-between">
       <div>
-        <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-2xl font-bold text-gray-900">
+        <a href="/vehicles" class="text-body-md text-on-surface-variant hover:text-primary transition-colors">
+          ← Volver a vehículos
+        </a>
+        <div class="flex items-center gap-md mt-sm">
+          <h1 class="text-headline-lg text-on-surface">
             {vehicle.brand} {vehicle.model}
           </h1>
-          <Badge variant={vehicle.status === 'active' ? 'success' : 'gray'}>
+          <Badge
+            variant={vehicle.status === 'active' ? 'success' : 'neutral'}
+            icon={vehicle.status === 'active' ? '✓' : '○'}
+          >
             {vehicle.status === 'active' ? 'Activo' : 'Inactivo'}
           </Badge>
         </div>
-        <p class="text-gray-500 font-mono">{vehicle.plate}</p>
+        <div class="inline-block px-sm py-xs bg-surface-container-highest rounded-md mt-sm">
+          <span class="font-mono text-data-mono text-primary tracking-wider">{vehicle.plate}</span>
+        </div>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-sm">
         <Button href={`/vehicles/${id}/edit`} variant="secondary">
           Editar
         </Button>
@@ -98,76 +120,74 @@ const statusVariants = {
     </div>
 
     {/* Vehicle info */}
-    <div class="grid gap-6 md:grid-cols-2">
+    <div class="grid gap-md md:grid-cols-2">
       <Card>
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Información general</h2>
-        <dl class="space-y-3">
+        <h2 class="text-headline-sm text-on-surface mb-md">Información general</h2>
+        <dl class="space-y-sm">
           {vehicle.vin && (
-            <div class="flex justify-between">
-              <dt class="text-sm text-gray-500">VIN</dt>
-              <dd class="text-sm font-medium text-gray-900 font-mono">{vehicle.vin}</dd>
+            <div class="flex justify-between items-center py-xs border-b border-outline-variant">
+              <dt class="text-label-md text-on-surface-variant uppercase">VIN</dt>
+              <dd class="font-mono text-data-mono text-on-surface">{vehicle.vin}</dd>
             </div>
           )}
           {vehicle.year && (
-            <div class="flex justify-between">
-              <dt class="text-sm text-gray-500">Año</dt>
-              <dd class="text-sm font-medium text-gray-900">{vehicle.year}</dd>
+            <div class="flex justify-between items-center py-xs border-b border-outline-variant">
+              <dt class="text-label-md text-on-surface-variant uppercase">Año</dt>
+              <dd class="text-body-md text-on-surface font-medium">{vehicle.year}</dd>
             </div>
           )}
           {vehicle.color && (
-            <div class="flex justify-between">
-              <dt class="text-sm text-gray-500">Color</dt>
-              <dd class="text-sm font-medium text-gray-900">{vehicle.color}</dd>
+            <div class="flex justify-between items-center py-xs border-b border-outline-variant">
+              <dt class="text-label-md text-on-surface-variant uppercase">Color</dt>
+              <dd class="text-body-md text-on-surface font-medium">{vehicle.color}</dd>
             </div>
           )}
           {vehicle.fuelType && (
-            <div class="flex justify-between">
-              <dt class="text-sm text-gray-500">Combustible</dt>
-              <dd class="text-sm font-medium text-gray-900 capitalize">{vehicle.fuelType}</dd>
+            <div class="flex justify-between items-center py-xs border-b border-outline-variant">
+              <dt class="text-label-md text-on-surface-variant uppercase">Combustible</dt>
+              <dd class="text-body-md text-on-surface font-medium capitalize">{vehicle.fuelType}</dd>
             </div>
           )}
           {vehicle.km !== null && (
-            <div class="flex justify-between">
-              <dt class="text-sm text-gray-500">Kilometraje</dt>
-              <dd class="text-sm font-medium text-gray-900">
-                {vehicle.km.toLocaleString()} km
-              </dd>
+            <div class="flex justify-between items-center py-xs">
+              <dt class="text-label-md text-on-surface-variant uppercase">Kilometraje</dt>
+              <dd class="font-mono text-data-mono text-on-surface">{vehicle.km.toLocaleString()} km</dd>
             </div>
           )}
         </dl>
       </Card>
 
       <Card>
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Documentos</h2>
+        <h2 class="text-headline-sm text-on-surface mb-md">Documentos</h2>
         {vehicleDocuments.length === 0 ? (
-          <p class="text-sm text-gray-500">No hay documentos registrados</p>
+          <p class="text-body-md text-on-surface-variant">No hay documentos registrados</p>
         ) : (
-          <div class="space-y-3">
+          <div class="space-y-sm">
             {vehicleDocuments.map((doc) => {
               const status = getDocumentStatus(doc.expiresAt, doc.alertDaysBefore ?? 30);
               return (
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between py-xs border-b border-outline-variant last:border-0">
                   <div>
-                    <p class="text-sm font-medium text-gray-900">
+                    <p class="text-body-md text-on-surface font-medium">
                       {documentTypes[doc.type] || doc.type}
                     </p>
                     {doc.expiresAt && (
-                      <p class="text-xs text-gray-500">
+                      <p class="text-label-md text-on-surface-variant">
                         Vence: {new Date(doc.expiresAt).toLocaleDateString('es-ES')}
                       </p>
                     )}
                   </div>
-                  <Badge variant={statusVariants[status]}>
-                    {status === 'valid' ? 'Vigente' : status === 'expiring' ? 'Vence pronto' : status === 'expired' ? 'Caducado' : 'Sin fecha'}
+                  <Badge variant={statusVariants[status]} icon={statusIcons[status]}>
+                    {statusLabels[status]}
                   </Badge>
                 </div>
               );
             })}
           </div>
         )}
-        <div class="mt-4">
+        <div class="mt-md">
           <Button href={`/documents?vehicle=${id}`} variant="ghost" size="sm">
-            Gestionar documentos
+            Gestionar documentos →
           </Button>
         </div>
       </Card>
@@ -175,39 +195,39 @@ const statusVariants = {
 
     {/* Recent maintenance */}
     <Card>
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-gray-900">Últimos mantenimientos</h2>
+      <div class="flex items-center justify-between mb-md">
+        <h2 class="text-headline-sm text-on-surface">Últimos mantenimientos</h2>
         <Button href={`/maintenance/${id}`} variant="ghost" size="sm">
-          Ver todos
+          Ver todos →
         </Button>
       </div>
 
       {vehicleMaintenances.length === 0 ? (
-        <p class="text-sm text-gray-500">No hay mantenimientos registrados</p>
+        <p class="text-body-md text-on-surface-variant">No hay mantenimientos registrados</p>
       ) : (
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
-              <tr class="border-b border-gray-200">
-                <th class="text-left text-xs font-medium text-gray-500 uppercase pb-3">Tipo</th>
-                <th class="text-left text-xs font-medium text-gray-500 uppercase pb-3">Fecha</th>
-                <th class="text-left text-xs font-medium text-gray-500 uppercase pb-3">Km</th>
-                <th class="text-right text-xs font-medium text-gray-500 uppercase pb-3">Coste</th>
+              <tr class="border-b border-outline-variant">
+                <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Tipo</th>
+                <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Fecha</th>
+                <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Km</th>
+                <th class="text-right text-label-md text-on-surface-variant uppercase pb-sm">Coste</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody class="divide-y divide-outline-variant">
               {vehicleMaintenances.map((m) => (
                 <tr>
-                  <td class="py-3 text-sm text-gray-900">
+                  <td class="py-sm text-body-md text-on-surface">
                     {maintenanceTypes[m.type] || m.type}
                   </td>
-                  <td class="py-3 text-sm text-gray-500">
+                  <td class="py-sm text-body-md text-on-surface-variant">
                     {m.date ? new Date(m.date).toLocaleDateString('es-ES') : '-'}
                   </td>
-                  <td class="py-3 text-sm text-gray-500">
+                  <td class="py-sm font-mono text-data-mono text-on-surface-variant">
                     {m.km?.toLocaleString() || '-'}
                   </td>
-                  <td class="py-3 text-sm text-gray-900 text-right">
+                  <td class="py-sm text-body-md text-on-surface text-right font-mono">
                     {m.cost ? `${m.cost.toFixed(2)} €` : '-'}
                   </td>
                 </tr>
@@ -219,7 +239,7 @@ const statusVariants = {
     </Card>
 
     {/* Quick actions */}
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-md">
       <Button href={`/maintenance/${id}?new=true`} variant="secondary">
         + Añadir mantenimiento
       </Button>

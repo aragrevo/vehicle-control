@@ -16,25 +16,49 @@ const { id, plate, brand, model, year, km, status } = Astro.props;
 
 <a
   href={`/vehicles/${id}`}
-  class="block bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+  class="block bg-surface-container rounded-lg border border-outline-variant p-md hover:ring-1 hover:ring-primary/10 transition-all duration-200"
+  style="box-shadow: 0 0 0 0 transparent;"
+  onmouseenter="this.style.boxShadow='0 0 20px rgba(173, 198, 255, 0.05)'"
+  onmouseleave="this.style.boxShadow='0 0 0 0 transparent'"
 >
-  <div class="flex items-start justify-between">
-    <div>
-      <div class="flex items-center gap-3 mb-2">
-        <h3 class="text-lg font-semibold text-gray-900">
-          {brand} {model}
-        </h3>
-        <Badge variant={status === 'active' ? 'success' : 'gray'}>
-          {status === 'active' ? 'Activo' : 'Inactivo'}
-        </Badge>
+  <div class="flex items-start justify-between mb-sm">
+    <div class="flex-1">
+      <h3 class="text-headline-sm text-on-surface mb-xs">
+        {brand} {model}
+      </h3>
+      <div class="inline-block px-sm py-xs bg-surface-container-highest rounded-md">
+        <span class="font-mono text-data-mono text-primary tracking-wider">{plate}</span>
       </div>
-      <p class="text-sm text-gray-500 font-mono">{plate}</p>
     </div>
-    <div class="text-right">
-      {year && <p class="text-sm text-gray-600">{year}</p>}
-      {km !== null && (
-        <p class="text-sm text-gray-500">{km.toLocaleString()} km</p>
-      )}
-    </div>
+    <Badge
+      variant={status === 'active' ? 'success' : 'neutral'}
+      icon={status === 'active' ? '✓' : '○'}
+    >
+      {status === 'active' ? 'Activo' : 'Inactivo'}
+    </Badge>
+  </div>
+
+  <div class="flex items-center gap-lg mt-md pt-sm border-t border-outline-variant">
+    {year && (
+      <div class="flex items-center gap-xs">
+        <span class="text-on-surface-variant text-label-md uppercase">Año</span>
+        <span class="text-on-surface text-body-md font-medium">{year}</span>
+      </div>
+    )}
+    {km !== null && (
+      <div class="flex items-center gap-xs">
+        <span class="text-on-surface-variant text-label-md uppercase">Km</span>
+        <span class="text-on-surface text-body-md font-medium font-mono">{km.toLocaleString()}</span>
+      </div>
+    )}
+  </div>
+
+  <div class="flex items-center gap-sm mt-md">
+    <span class="text-xs text-on-surface-variant hover:text-primary transition-colors">
+      Editar →
+    </span>
+    <span class="text-xs text-on-surface-variant hover:text-primary transition-colors">
+      Documentos →
+    </span>
   </div>
 </a>

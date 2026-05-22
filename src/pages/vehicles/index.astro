@@ -18,11 +18,11 @@ const userVehicles = await db
 ---
 
 <AppLayout title="Vehículos">
-  <div class="space-y-6">
+  <div class="space-y-lg">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Mis vehículos</h1>
-        <p class="text-gray-500 mt-1">
+        <h1 class="text-headline-lg text-on-surface">Mis vehículos</h1>
+        <p class="text-body-lg text-on-surface-variant mt-xs">
           {userVehicles.length} vehículo{userVehicles.length !== 1 ? 's' : ''} registrado{userVehicles.length !== 1 ? 's' : ''}
         </p>
       </div>
@@ -32,12 +32,12 @@ const userVehicles = await db
     </div>
 
     {userVehicles.length === 0 ? (
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-        <div class="text-6xl mb-4">🚗</div>
-        <h2 class="text-xl font-semibold text-gray-900 mb-2">
+      <div class="bg-surface-container rounded-lg border border-outline-variant p-xl text-center">
+        <div class="text-6xl mb-md">🚗</div>
+        <h2 class="text-headline-md text-on-surface mb-sm">
           No tienes vehículos registrados
         </h2>
-        <p class="text-gray-500 mb-6">
+        <p class="text-body-lg text-on-surface-variant mb-lg">
           Añade tu primer vehículo para empezar a gestionar su mantenimiento y documentos.
         </p>
         <Button href="/vehicles/new" variant="primary">
@@ -45,7 +45,7 @@ const userVehicles = await db
         </Button>
       </div>
     ) : (
-      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div class="grid gap-md md:grid-cols-2 lg:grid-cols-3">
         {userVehicles.map((vehicle) => (
           <VehicleCard
             id={vehicle.id}
