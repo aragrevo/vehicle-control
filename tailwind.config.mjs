@@ -30,6 +30,14 @@ export default {
         primary: {
           DEFAULT: '#adc6ff',
           container: '#4d8eff',
+          fixed: {
+            DEFAULT: '#d8e2ff',
+            dim: '#adc6ff',
+          },
+        },
+        'on-primary-fixed': {
+          DEFAULT: '#001a42',
+          variant: '#004395',
         },
         'on-primary': {
           DEFAULT: '#002e6a',
@@ -39,18 +47,34 @@ export default {
         secondary: {
           DEFAULT: '#b7c8e1',
           container: '#3a4a5f',
+          fixed: {
+            DEFAULT: '#d3e4fe',
+            dim: '#b7c8e1',
+          },
         },
         'on-secondary': {
           DEFAULT: '#213145',
           container: '#a9bad3',
+          fixed: {
+            DEFAULT: '#0b1c30',
+            variant: '#38485d',
+          },
         },
         tertiary: {
           DEFAULT: '#ffb786',
           container: '#df7412',
+          fixed: {
+            DEFAULT: '#ffdcc6',
+            dim: '#ffb786',
+          },
         },
         'on-tertiary': {
           DEFAULT: '#502400',
           container: '#461f00',
+          fixed: {
+            DEFAULT: '#311400',
+            variant: '#723600',
+          },
         },
         error: {
           DEFAULT: '#ffb4ab',
@@ -79,6 +103,13 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+        'headline-lg': ['Inter'],
+        'headline-md': ['Inter'],
+        'headline-sm': ['Inter'],
+        'body-md': ['Inter'],
+        'body-lg': ['Inter'],
+        'label-md': ['Inter'],
+        'data-mono': ['JetBrains Mono'],
       },
       fontSize: {
         'headline-lg': ['32px', { lineHeight: '1.2', fontWeight: '700', letterSpacing: '-0.02em' }],
@@ -91,10 +122,10 @@ export default {
       },
       borderRadius: {
         sm: '0.25rem',
-        DEFAULT: '0.5rem',
+        DEFAULT: '0.25rem',
         md: '0.75rem',
-        lg: '1rem',
-        xl: '1.5rem',
+        lg: '0.5rem',
+        xl: '0.75rem',
         full: '9999px',
       },
       spacing: {
@@ -103,6 +134,10 @@ export default {
         md: '16px',
         lg: '24px',
         xl: '32px',
+        gutter: '16px',
+        base: '4px',
+        'margin-mobile': '16px',
+        'margin-desktop': '48px',
       },
     },
   },

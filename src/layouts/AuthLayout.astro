@@ -1,0 +1,55 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content="Control de vehículos" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <title>{title} | Vehicle Control</title>
+  </head>
+  <body class="flex min-h-screen font-body-md text-body-md bg-background">
+    <!-- Split Screen Container -->
+    <div class="flex w-full">
+      <!-- Left Side: Visual Image (60%) -->
+      <div class="hidden lg:block lg:w-[60%] relative overflow-hidden">
+        <img
+          alt="Sleek close-up of a modern electric vehicle's front grille and LED headlight in a dark, tech-focused environment"
+          class="absolute inset-0 w-full h-full object-cover"
+          src="/images/image.png"
+        />
+        <!-- Subtle Dark Gradient Overlay -->
+        <div
+          class="absolute inset-0 bg-gradient-to-r from-background/40 to-background/80 lg:to-transparent"
+        >
+        </div>
+        <div
+          class="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent"
+        >
+        </div>
+      </div>
+
+      <!-- Right Side: Login Form (40%) -->
+      <div
+        class="w-full lg:w-[40%] bg-surface-container-low flex flex-col justify-center p-xl md:p-margin-desktop relative"
+      >
+        <div class="w-full max-w-[400px] mx-auto">
+          <slot />
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
