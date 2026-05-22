@@ -2,11 +2,12 @@
 interface Props {
   class?: string;
   padding?: boolean;
+  interactive?: boolean;
 }
 
-const { class: className = '', padding = true } = Astro.props;
+const { class: className = '', padding = true, interactive = false } = Astro.props;
 ---
 
-<div class={`bg-white rounded-xl shadow-sm border border-gray-200 ${padding ? 'p-6' : ''} ${className}`}>
+<div class={`bg-surface-container rounded-lg border border-outline-variant ${padding ? 'p-md' : ''} ${interactive ? 'card-interactive cursor-pointer' : ''} ${className}`}>
   <slot />
 </div>
