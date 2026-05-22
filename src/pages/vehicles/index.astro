@@ -1,13 +1,13 @@
 ---
-import AppLayout from '../../layouts/AppLayout.astro';
-import VehicleCard from '../../components/vehicles/VehicleCard.astro';
-import Button from '../../components/ui/Button.astro';
-import { db } from '../../db/client';
-import { vehicles } from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import AppLayout from "../../layouts/AppLayout.astro";
+import VehicleCard from "../../components/vehicles/VehicleCard.astro";
+import Button from "../../components/ui/Button.astro";
+import { db } from "../../db/client";
+import { vehicles } from "../../db/schema";
+import { eq } from "drizzle-orm";
 
 if (!Astro.locals.user) {
-  return Astro.redirect('/login');
+  return Astro.redirect("/login");
 }
 
 const userVehicles = await db
@@ -17,47 +17,111 @@ const userVehicles = await db
   .orderBy(vehicles.createdAt);
 ---
 
-<AppLayout title="Vehículos">
-  <div class="space-y-lg">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-headline-lg text-on-surface">Mis vehículos</h1>
-        <p class="text-body-lg text-on-surface-variant mt-xs">
-          {userVehicles.length} vehículo{userVehicles.length !== 1 ? 's' : ''} registrado{userVehicles.length !== 1 ? 's' : ''}
-        </p>
+<AppLayout title="Mis Vehículos">
+  <div class="space-y-xl">
+    {/* Filter and Action Bar */}
+    <section
+      class="flex flex-col md:flex-row gap-md justify-between items-start md:items-center"
+    >
+      <div class="flex flex-wrap gap-sm">
+        <div
+          class="flex items-center bg-surface-container-high border border-outline-variant rounded-lg px-md py-2 cursor-pointer hover:border-primary transition-colors"
+        >
+          <span
+            class="font-label-md text-on-surface-variant mr-3 uppercase tracking-wider"
+            >Estado:</span
+          >
+          <span class="font-label-md text-primary">Todos</span>
+          <span class="material-symbols-outlined text-on-surface-variant ml-2"
+            >expand_more</span
+          >
+        </div>
+        <div
+          class="flex items-center bg-surface-container-high border border-outline-variant rounded-lg px-md py-2 cursor-pointer hover:border-primary transition-colors"
+        >
+          <span
+            class="font-label-md text-on-surface-variant mr-3 uppercase tracking-wider"
+            >Marca:</span
+          >
+          <span class="font-label-md text-on-surface">Todas</span>
+          <span class="material-symbols-outlined text-on-surface-variant ml-2"
+            >expand_more</span
+          >
+        </div>
       </div>
-      <Button href="/vehicles/new" variant="primary">
-        + Nuevo vehículo
-      </Button>
-    </div>
+      <Button href="/vehicles/new" variant="primary"> + Nuevo vehículo </Button>
+    </section>
 
-    {userVehicles.length === 0 ? (
-      <div class="bg-surface-container rounded-lg border border-outline-variant p-xl text-center">
-        <div class="text-6xl mb-md">🚗</div>
-        <h2 class="text-headline-md text-on-surface mb-sm">
-          No tienes vehículos registrados
-        </h2>
-        <p class="text-body-lg text-on-surface-variant mb-lg">
-          Añade tu primer vehículo para empezar a gestionar su mantenimiento y documentos.
-        </p>
-        <Button href="/vehicles/new" variant="primary">
-          Añadir vehículo
-        </Button>
-      </div>
-    ) : (
-      <div class="grid gap-md md:grid-cols-2 lg:grid-cols-3">
-        {userVehicles.map((vehicle) => (
-          <VehicleCard
-            id={vehicle.id}
-            plate={vehicle.plate}
-            brand={vehicle.brand}
-            model={vehicle.model}
-            year={vehicle.year}
-            km={vehicle.km}
-            status={vehicle.status}
-          />
-        ))}
-      </div>
-    )}
+    {/* Vehicle Grid */}
+    {
+      userVehicles.length === 0 ? (
+        <div class="bg-surface-container rounded-xl border border-outline-variant p-xl text-center">
+          <span class="material-symbols-outlined text-6xl text-outline/30 mb-md">
+            directions_car
+          </span>
+          <h2 class="font-headline-md text-headline-md text-on-surface mb-sm">
+            No tienes vehículos registrados
+          </h2>
+          <p class="text-body-lg text-on-surface-variant mb-lg">
+            Añade tu primer vehículo para empezar a gestionar su mantenimiento y
+            documentos.
+          </p>
+          <a
+            href="/vehicles/new"
+            class="inline-flex items-center gap-2 bg-primary text-on-primary-fixed px-lg py-3 rounded-xl font-label-md shadow-lg hover:opacity-90 transition-all active:scale-95"
+          >
+            <span
+              class="material-symbols-outlined"
+              style="font-variation-settings: 'wght' 700;"
+            >
+              add
+            </span>
+            Añadir Vehículo
+          </a>
+        </div>
+      ) : (
+        <>
+          <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-lg">
+            {userVehicles.map((vehicle) => (
+              <VehicleCard
+                id={vehicle.id}
+                plate={vehicle.plate}
+                brand={vehicle.brand}
+                model={vehicle.model}
+                year={vehicle.year}
+                km={vehicle.km}
+                status={vehicle.status}
+              />
+            ))}
+          </section>
+
+          {/* Load More / Stats Footer */}
+          <div class="flex flex-col md:flex-row justify-between items-center py-md border-t border-outline-variant">
+            <p class="text-on-surface-variant font-label-md mb-4 md:mb-0">
+              Mostrando {userVehicles.length} de {userVehicles.length} vehículo
+              {userVehicles.length !== 1 ? "s" : ""} registrado
+              {userVehicles.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+        </>
+      )
+    }
   </div>
 </AppLayout>
+
+<script>
+  const searchInput = document.querySelector(
+    'input[placeholder="Buscar vehículo..."]',
+  ) as HTMLInputElement;
+  searchInput?.addEventListener("input", (e) => {
+    const term = (e.target as HTMLInputElement).value.toLowerCase();
+    document.querySelectorAll("h3").forEach((title) => {
+      const card = title.closest(".card-glow") as HTMLElement;
+      if (card && title.textContent?.toLowerCase().includes(term)) {
+        card.style.display = "flex";
+      } else if (card) {
+        card.style.display = "none";
+      }
+    });
+  });
+</script>
