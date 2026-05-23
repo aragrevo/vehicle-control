@@ -20,7 +20,7 @@ const userVehicles = await db
   .select()
   .from(vehicles)
   .where(eq(vehicles.userId, Astro.locals.user.id));
-
+    
 const vehicleIds = userVehicles.map((v) => v.id);
 
 let userFuelLogs;
@@ -71,21 +71,41 @@ if (Astro.request.method === 'POST') {
 const vehicleMap = new Map(userVehicles.map((v) => [v.id, { name: `${v.brand} ${v.model}`, plate: v.plate, brand: v.brand }]));
 
 function calculateStats(logs: typeof userFuelLogs) {
-  if (logs.length === 0) return { totalCost: 0, avgConsumption: 0 };
+  if (logs.length === 0) return { totalCost: 0, avgConsumption: 0, costTrend: null, consumptionTrend: null, refuelCount: 0, avgPricePerLiter: 0, totalLiters: 0 };
+  const now = Date.now();
+  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+  const sixtyDaysAgo = now - 60 * 24 * 60 * 60 * 1000;
+
+  const recent = logs.filter((f) => f.date && f.date >= thirtyDaysAgo);
+  const previous = logs.filter((f) => f.date && f.date >= sixtyDaysAgo && f.date < thirtyDaysAgo);
+
   const totalCost = logs.reduce((sum, f) => sum + f.total, 0);
-  const sorted = [...logs].filter((f) => f.km !== null && f.date !== null).sort((a, b) => (a.date || 0) - (b.date || 0));
-  let totalKm = 0;
-  let litersForConsumption = 0;
-  for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i - 1].km && sorted[i].km) {
-      const diff = sorted[i].km! - sorted[i - 1].km!;
-      if (diff > 0) { totalKm += diff; litersForConsumption += sorted[i].liters; }
+  const totalLiters = logs.reduce((sum, f) => sum + f.liters, 0);
+  const avgPricePerLiter = totalLiters > 0 ? totalCost / totalLiters : 0;
+  const refuelCount = logs.length;
+
+  const recentCost = recent.reduce((sum, f) => sum + f.total, 0);
+  const prevCost = previous.reduce((sum, f) => sum + f.total, 0);
+  const costTrend = prevCost > 0 ? ((recentCost - prevCost) / prevCost) * 100 : null;
+
+  function calcConsumption(logSubset: typeof userFuelLogs) {
+    const sorted = [...logSubset].filter((f) => f.km !== null && f.date !== null).sort((a, b) => (a.date || 0) - (b.date || 0));
+    let totalKm = 0;
+    let liters = 0;
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i - 1].km && sorted[i].km) {
+        const diff = sorted[i].km! - sorted[i - 1].km!;
+        if (diff > 0) { totalKm += diff; liters += sorted[i].liters; }
+      }
     }
+    return totalKm > 0 ? (liters / totalKm) * 100 : 0;
   }
-  return {
-    totalCost,
-    avgConsumption: totalKm > 0 ? (litersForConsumption / totalKm) * 100 : 0,
-  };
+
+  const avgConsumption = calcConsumption(logs);
+  const prevConsumption = calcConsumption(previous);
+  const consumptionTrend = prevConsumption > 0 ? ((avgConsumption - prevConsumption) / prevConsumption) * 100 : null;
+
+  return { totalCost, avgConsumption, costTrend, consumptionTrend, refuelCount, avgPricePerLiter, totalLiters };
 }
 
 const stats = calculateStats(userFuelLogs);
@@ -98,38 +118,12 @@ const ctaHref = vehicleFilter ? `/fuel?vehicle=${vehicleFilter}&new=true` : '/fu
       totalCost={stats.totalCost}
       avgConsumption={stats.avgConsumption}
       ctaHref={ctaHref}
+      costTrend={stats.costTrend}
+      consumptionTrend={stats.consumptionTrend}
+      refuelCount={stats.refuelCount}
+      avgPricePerLiter={stats.avgPricePerLiter}
+      totalLiters={stats.totalLiters}
     />
-
-    {showForm && (
-      <div class="bg-surface-container border border-outline-variant rounded-xl p-lg">
-        <h2 class="text-headline-sm text-on-surface mb-md">Nueva carga</h2>
-        {vehicleFilter ? (
-          <FuelForm
-            vehicleId={vehicleFilter}
-            action={`/fuel?vehicle=${vehicleFilter}`}
-          />
-        ) : (
-          <div class="space-y-md">
-            <p class="text-body-md text-on-surface-variant">Selecciona un vehículo:</p>
-            <div class="grid gap-sm">
-              {userVehicles.map((v) => (
-                <a
-                  href={`/fuel?vehicle=${v.id}&new=true`}
-                  class="p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
-                >
-                  <div class="flex items-center gap-md">
-                    <span class="material-symbols-outlined text-primary">directions_car</span>
-                    <span class="font-label-md">{v.brand} {v.model}</span>
-                    <span class="font-data-mono text-primary">{v.plate}</span>
-                  </div>
-                  <span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )}
 
     <FuelFilters
       vehicles={userVehicles}

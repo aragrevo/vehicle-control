@@ -32,12 +32,25 @@ const { vehicles, selectedVehicleId } = Astro.props;
     </select>
     <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
   </div>
-  {selectedVehicleId && (
-    <a href="/fuel" class="flex items-center gap-2 px-4 py-2 text-label-md font-bold text-on-surface-variant border border-outline-variant rounded-lg hover:bg-surface-bright/10 transition-colors active:scale-95">
-      <span class="material-symbols-outlined text-lg">close</span>
-      Limpiar
-    </a>
-  )}
+  <div class="relative min-w-[180px]">
+    <input
+      class="bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface w-full focus:outline-none focus:border-primary cursor-pointer"
+      type="date"
+      id="dateFilter"
+    />
+  </div>
+  <div class="flex items-center gap-sm ml-auto">
+    {selectedVehicleId && (
+      <a href="/fuel" class="flex items-center gap-2 px-4 py-2 text-label-md font-bold text-on-surface-variant border border-outline-variant rounded-lg hover:bg-surface-bright/10 transition-colors active:scale-95">
+        <span class="material-symbols-outlined text-lg">close</span>
+        Limpiar
+      </a>
+    )}
+    <button class="flex items-center gap-2 px-4 py-2 text-label-md font-bold text-on-surface-variant border border-outline-variant rounded-lg hover:bg-surface-bright/10 transition-colors active:scale-95" id="exportBtn">
+      <span class="material-symbols-outlined text-lg">download</span>
+      Exportar PDF
+    </button>
+  </div>
 </div>
 
 <script>
@@ -45,5 +58,24 @@ const { vehicles, selectedVehicleId } = Astro.props;
   vehicleSelect?.addEventListener('change', () => {
     const value = vehicleSelect.value;
     window.location.href = value ? `/fuel?vehicle=${value}` : '/fuel';
+  });
+
+  const dateFilter = document.getElementById('dateFilter') as HTMLInputElement;
+  dateFilter?.addEventListener('change', () => {
+    const rows = document.querySelectorAll('[data-fuel-date]');
+    const filterVal = dateFilter.value;
+    rows.forEach((row) => {
+      if (!filterVal) {
+        (row as HTMLElement).style.display = '';
+      } else {
+        const rowDate = (row as HTMLElement).dataset.fuelDate;
+        (row as HTMLElement).style.display = rowDate === filterVal ? '' : 'none';
+      }
+    });
+  });
+
+  const exportBtn = document.getElementById('exportBtn');
+  exportBtn?.addEventListener('click', () => {
+    window.print();
   });
 </script>

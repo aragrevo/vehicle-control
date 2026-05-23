@@ -1,0 +1,42 @@
+---
+interface Props {
+  label: string;
+  value: string;
+  icon: string;
+  colorClass?: string;
+  bgClass?: string;
+  trend?: number | null;
+  trendInverted?: boolean;
+  suffix?: string;
+}
+
+const { label, value, icon, colorClass = 'text-primary', bgClass = 'bg-primary/10', trend = null, trendInverted = false, suffix } = Astro.props;
+---
+
+<div class="bg-surface-container border border-outline-variant rounded-xl p-md flex flex-col items-start justify-between hover:border-primary/50 transition-colors">
+  <div class="flex items-center gap-2 w-full justify-between">
+    <p class="text-label-md text-on-surface-variant uppercase tracking-widest mb-sm">{label}</p>
+    
+    <div class={`w-10 h-10 rounded-lg ${bgClass} flex items-center justify-center`}>
+      <span class={`material-symbols-outlined ${colorClass}`}>{icon}</span>
+    </div>
+  </div>
+  <div class="flex items-baseline gap-2">
+      <p class="text-headline-lg font-headline-lg text-on-surface font-data-mono">
+        {value}
+        {suffix && <span class="text-body-md font-normal text-on-surface-variant ml-1">{suffix}</span>}
+      </p>
+      {trend !== null && trend !== 0 && (
+        <span class={`text-label-md flex items-center gap-1 ${
+          trendInverted
+            ? (trend < 0 ? 'text-success' : 'text-error')
+            : (trend > 0 ? 'text-error' : 'text-success')
+        }`}>
+          <span class="material-symbols-outlined text-sm">
+            {trend > 0 ? 'trending_up' : 'trending_down'}
+          </span>
+          {Math.abs(trend).toFixed(1)}%
+        </span>
+      )}
+    </div>
+</div>

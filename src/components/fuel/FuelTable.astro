@@ -17,9 +17,11 @@ interface VehicleInfo {
 interface Props {
   fuelLogs: FuelLog[];
   vehicleMap: Map<string, VehicleInfo>;
+  perPage?: number;
 }
 
-const { fuelLogs, vehicleMap } = Astro.props;
+const { fuelLogs, vehicleMap, perPage = 10 } = Astro.props;
+const totalPages = Math.max(Math.ceil(fuelLogs.length / perPage), 1);
 ---
 
 <div class="bg-surface-container border border-outline-variant rounded-xl overflow-hidden">
@@ -36,7 +38,7 @@ const { fuelLogs, vehicleMap } = Astro.props;
           <th class="px-md py-4 text-label-md font-bold text-on-surface-variant uppercase tracking-wider"></th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-outline-variant">
+      <tbody class="divide-y divide-outline-variant" id="fuelTableBody">
         {fuelLogs.length === 0 ? (
           <tr>
             <td colspan="7" class="px-md py-xl text-center">
@@ -45,10 +47,16 @@ const { fuelLogs, vehicleMap } = Astro.props;
             </td>
           </tr>
         ) : (
-          fuelLogs.map((f) => {
+          fuelLogs.map((f, index) => {
             const v = vehicleMap.get(f.vehicleId);
+            const dateStr = f.date ? new Date(f.date).toISOString().split('T')[0] : '';
             return (
-              <tr class="hover:bg-surface-bright/5 transition-colors group">
+              <tr
+                class="hover:bg-surface-bright/5 transition-colors group"
+                data-fuel-date={dateStr}
+                data-page={Math.floor(index / perPage) + 1}
+                style={index >= perPage ? 'display: none' : ''}
+              >
                 <td class="px-md py-4">
                   <div class="text-body-md text-on-surface">
                     {f.date ? new Date(f.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
@@ -77,12 +85,17 @@ const { fuelLogs, vehicleMap } = Astro.props;
                   {f.km ? `${f.km.toLocaleString()} km` : '—'}
                 </td>
                 <td class="px-md py-4 text-right">
-                  <form method="POST" action={`/api/fuel/${f.id}/delete`} class="inline">
-                    <input type="hidden" name="vehicleId" value={f.vehicleId} />
-                    <button type="submit" class="p-2 hover:bg-error/10 rounded-lg text-on-surface-variant hover:text-error transition-colors opacity-0 group-hover:opacity-100">
-                      <span class="material-symbols-outlined text-lg">delete</span>
+                  <div class="flex items-center justify-end gap-xs">
+                    <form method="POST" action={`/api/fuel/${f.id}/delete`} class="inline">
+                      <input type="hidden" name="vehicleId" value={f.vehicleId} />
+                      <button type="submit" class="p-2 hover:bg-error/10 rounded-lg text-on-surface-variant hover:text-error transition-colors opacity-0 group-hover:opacity-100">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </form>
+                    <button type="button" class="p-2 hover:bg-surface-bright/20 rounded-lg text-on-surface-variant transition-colors opacity-0 group-hover:opacity-100">
+                      <span class="material-symbols-outlined">more_vert</span>
                     </button>
-                  </form>
+                  </div>
                 </td>
               </tr>
             );
@@ -93,9 +106,62 @@ const { fuelLogs, vehicleMap } = Astro.props;
   </div>
   {fuelLogs.length > 0 && (
     <div class="px-md py-4 flex items-center justify-between border-t border-outline-variant bg-surface-container-low">
-      <span class="text-label-md text-on-surface-variant">
-        {fuelLogs.length} registro{fuelLogs.length !== 1 ? 's' : ''}
+      <span class="text-label-md text-on-surface-variant" id="tableInfo">
+        Mostrando 1 a {Math.min(perPage, fuelLogs.length)} de {fuelLogs.length} registros
       </span>
+      {totalPages > 1 && (
+        <div class="flex items-center gap-2" id="pagination">
+          <button class="p-1 hover:bg-surface-bright/10 rounded disabled:opacity-30" id="prevPage" disabled>
+            <span class="material-symbols-outlined">chevron_left</span>
+          </button>
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button
+              class={`w-8 h-8 rounded-lg text-label-md ${i === 0 ? 'bg-primary text-on-primary font-bold' : 'hover:bg-surface-bright/10 text-on-surface-variant'}`}
+              data-page-btn={i + 1}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <button class="p-1 hover:bg-surface-bright/10 rounded" id="nextPage">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+      )}
     </div>
   )}
 </div>
+
+<script>
+  const rows = document.querySelectorAll('[data-page]');
+  const pageButtons = document.querySelectorAll('[data-page-btn]');
+  const prevBtn = document.getElementById('prevPage');
+  const nextBtn = document.getElementById('nextPage');
+  const tableInfo = document.getElementById('tableInfo');
+  const totalRows = rows.length;
+  const perPage = 10;
+  let currentPage = 1;
+  const totalPages = Math.ceil(totalRows / perPage);
+
+  function goToPage(page: number) {
+    currentPage = Math.max(1, Math.min(page, totalPages));
+    rows.forEach((row) => {
+      const p = parseInt((row as HTMLElement).dataset.page || '1');
+      (row as HTMLElement).style.display = p === currentPage ? '' : 'none';
+    });
+    pageButtons.forEach((btn) => {
+      const p = parseInt((btn as HTMLElement).dataset.pageBtn || '1');
+      btn.className = `w-8 h-8 rounded-lg text-label-md ${p === currentPage ? 'bg-primary text-on-primary font-bold' : 'hover:bg-surface-bright/10 text-on-surface-variant'}`;
+    });
+    if (prevBtn) (prevBtn as HTMLButtonElement).disabled = currentPage === 1;
+    if (nextBtn) (nextBtn as HTMLButtonElement).disabled = currentPage === totalPages;
+    const start = (currentPage - 1) * perPage + 1;
+    const end = Math.min(currentPage * perPage, totalRows);
+    if (tableInfo) tableInfo.textContent = `Mostrando ${start} a ${end} de ${totalRows} registros`;
+  }
+
+  pageButtons.forEach((btn) => {
+    btn.addEventListener('click', () => goToPage(parseInt((btn as HTMLElement).dataset.pageBtn || '1')));
+  });
+  prevBtn?.addEventListener('click', () => goToPage(currentPage - 1));
+  nextBtn?.addEventListener('click', () => goToPage(currentPage + 1));
+</script>
