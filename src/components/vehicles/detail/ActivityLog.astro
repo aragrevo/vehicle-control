@@ -21,7 +21,7 @@ const { items, vehicleId } = Astro.props;
     <h3 class="font-headline-sm text-headline-sm text-on-surface">Actividad Reciente</h3>
     <div class="flex gap-sm">
       <a href={`/maintenance/${vehicleId}`} class="text-label-md text-primary hover:underline transition-all">Mantenimientos →</a>
-      <a href={`/fuel/${vehicleId}`} class="text-label-md text-primary hover:underline transition-all">Repostajes →</a>
+      <a href={`/fuel?vehicle=${vehicleId}`} class="text-label-md text-primary hover:underline transition-all">Combustible →</a>
     </div>
   </div>
   {items.length === 0 ? (

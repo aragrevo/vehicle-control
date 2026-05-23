@@ -1,44 +1,199 @@
 ---
-interface Props {
-  vehicleId: string;
+interface EfficiencyPoint {
+  date: number;
+  lper100km: number;
+  liters: number;
+  km: number;
 }
 
-const { vehicleId } = Astro.props;
+interface Props {
+  days: string[];
+  dailyLiters: Record<string, number>;
+  dailyCost: Record<string, number>;
+  maxLiters: number;
+  efficiencyData: EfficiencyPoint[];
+  maxEfficiency: number;
+  avgEfficiency: number | null;
+}
+
+const { days, dailyLiters, dailyCost, maxLiters, efficiencyData, maxEfficiency, avgEfficiency } = Astro.props;
+
+const totalLiters = Object.values(dailyLiters).reduce((sum, l) => sum + l, 0);
+const totalCost = Object.values(dailyCost).reduce((sum, c) => sum + c, 0);
+
+function formatDate(iso: string): string {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+}
+
+function formatTimestamp(ts: number): string {
+  return new Date(ts).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+}
 ---
 
 <div class="xl:col-span-8 bg-surface-container p-lg rounded-xl border border-outline-variant relative overflow-hidden">
   <div class="flex justify-between items-center mb-lg">
     <div>
       <h3 class="font-headline-sm text-headline-sm text-on-surface">Consumo de Combustible</h3>
-      <p class="text-body-md text-outline">Últimos 30 días</p>
+      <p class="text-body-md text-outline" id="chartSubtitle">
+        {days.length > 0
+          ? `${days.length} carga${days.length > 1 ? "s" : ""} en los últimos 30 días`
+          : "Sin cargas en los últimos 30 días"}
+      </p>
     </div>
-    <div class="flex gap-sm">
-      <span class="px-sm py-xs bg-surface-container-highest rounded text-label-md text-outline border border-outline-variant cursor-pointer">L/100KM</span>
-      <span class="px-sm py-xs bg-primary text-on-primary rounded text-label-md border border-primary cursor-pointer">TOTAL LITROS</span>
+    <div class="flex items-center gap-md">
+      {avgEfficiency !== null && (
+        <div class="text-right" id="avgDisplay">
+          <p class="font-data-mono text-primary text-headline-sm">{avgEfficiency.toFixed(1)}</p>
+          <p class="text-[10px] text-outline">L/100km medio</p>
+        </div>
+      )}
+      {days.length > 0 && (
+        <div class="text-right" id="totalDisplay">
+          <p class="font-data-mono text-primary text-headline-sm">{totalLiters.toFixed(0)}L</p>
+          <p class="text-[10px] text-outline">{totalCost.toFixed(2)} € total</p>
+        </div>
+      )}
     </div>
   </div>
-  <div class="h-64 w-full flex items-end gap-2 px-4">
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[40%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[55%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[45%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[70%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[85%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[60%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[50%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[40%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[65%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[90%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[75%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[55%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[45%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[60%] rounded-t-sm"></div>
-    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[80%] rounded-t-sm"></div>
+
+  <div class="flex gap-sm mb-md">
+    <button
+      type="button"
+      class="px-sm py-xs bg-primary text-on-primary rounded text-label-md border border-primary cursor-pointer"
+      data-chart-toggle="efficiency"
+    >
+      L/100KM
+    </button>
+    <button
+      type="button"
+      class="px-sm py-xs bg-surface-container-highest rounded text-label-md text-outline border border-outline-variant cursor-pointer"
+      data-chart-toggle="liters"
+    >
+      TOTAL LITROS
+    </button>
   </div>
-  <div class="flex justify-between mt-sm border-t border-outline-variant/30 pt-xs">
-    <span class="text-[10px] text-outline">Oct 01</span>
-    <span class="text-[10px] text-outline">Oct 07</span>
-    <span class="text-[10px] text-outline">Oct 14</span>
-    <span class="text-[10px] text-outline">Oct 21</span>
-    <span class="text-[10px] text-outline">Oct 30</span>
+
+  {/* Efficiency view */}
+  <div id="efficiencyView">
+    {efficiencyData.length === 0 ? (
+      <div class="h-64 w-full flex items-center justify-center">
+        <div class="text-center">
+          <span class="material-symbols-outlined text-on-surface-variant" style="font-size: 48px;">speed</span>
+          <p class="text-body-md text-on-surface-variant mt-sm">Sin datos de rendimiento</p>
+          <p class="text-[10px] text-outline">Necesita al menos 2 cargas con km registrados</p>
+        </div>
+      </div>
+    ) : (
+      <>
+        <div class="h-64 w-full flex items-end gap-2 px-4">
+          {efficiencyData.map((point) => {
+            const heightPct = Math.max((point.lper100km / maxEfficiency) * 100, 4);
+            const isAboveAvg = avgEfficiency !== null && point.lper100km > avgEfficiency * 1.15;
+            return (
+              <div class="flex-1 relative group flex flex-col items-center justify-end h-full">
+                <div class="absolute -top-6 left-1/2 -translate-x-1/2 hidden group-hover:block bg-surface-container-highest px-2 py-1 rounded text-[10px] text-on-surface whitespace-nowrap border border-outline-variant z-10">
+                  {point.lper100km.toFixed(1)} L/100km · {point.liters.toFixed(1)}L
+                </div>
+                <div
+                  class={`w-full transition-colors rounded-t-sm cursor-pointer ${isAboveAvg ? "bg-tertiary/30 hover:bg-tertiary" : "bg-primary/20 hover:bg-primary"}`}
+                  style={`height: ${heightPct}%`}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div class="flex justify-between mt-sm border-t border-outline-variant/30 pt-xs px-4">
+          {efficiencyData.length <= 7 ? (
+            efficiencyData.map((point) => (
+              <span class="text-[10px] text-outline">{formatTimestamp(point.date)}</span>
+            ))
+          ) : (
+            <>
+              <span class="text-[10px] text-outline">{formatTimestamp(efficiencyData[0].date)}</span>
+              <span class="text-[10px] text-outline">{formatTimestamp(efficiencyData[Math.floor(efficiencyData.length / 2)].date)}</span>
+              <span class="text-[10px] text-outline">{formatTimestamp(efficiencyData[efficiencyData.length - 1].date)}</span>
+            </>
+          )}
+        </div>
+      </>
+    )}
+  </div>
+
+  {/* Liters view */}
+  <div id="litersView" class="hidden">
+    {days.length === 0 ? (
+      <div class="h-64 w-full flex items-center justify-center">
+        <div class="text-center">
+          <span class="material-symbols-outlined text-on-surface-variant" style="font-size: 48px;">local_gas_station</span>
+          <p class="text-body-md text-on-surface-variant mt-sm">Sin datos de consumo</p>
+          <p class="text-[10px] text-outline">Registra una carga para ver el gráfico</p>
+        </div>
+      </div>
+    ) : (
+      <>
+        <div class="h-64 w-full flex items-end gap-2 px-4">
+          {days.map((day) => {
+            const liters = dailyLiters[day] || 0;
+            const heightPct = Math.max((liters / maxLiters) * 100, 4);
+            return (
+              <div class="flex-1 relative group flex flex-col items-center justify-end h-full">
+                <div class="absolute -top-6 left-1/2 -translate-x-1/2 hidden group-hover:block bg-surface-container-highest px-2 py-1 rounded text-[10px] text-on-surface whitespace-nowrap border border-outline-variant z-10">
+                  {liters.toFixed(1)}L · {(dailyCost[day] || 0).toFixed(2)}€
+                </div>
+                <div
+                  class="w-full bg-primary/20 hover:bg-primary transition-colors rounded-t-sm cursor-pointer"
+                  style={`height: ${heightPct}%`}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div class="flex justify-between mt-sm border-t border-outline-variant/30 pt-xs px-4">
+          {days.length <= 7 ? (
+            days.map((day) => (
+              <span class="text-[10px] text-outline">{formatDate(day)}</span>
+            ))
+          ) : (
+            <>
+              <span class="text-[10px] text-outline">{formatDate(days[0])}</span>
+              {days.length > 2 && <span class="text-[10px] text-outline">{formatDate(days[Math.floor(days.length / 2)])}</span>}
+              <span class="text-[10px] text-outline">{formatDate(days[days.length - 1])}</span>
+            </>
+          )}
+        </div>
+      </>
+    )}
   </div>
 </div>
+
+<script>
+  const toggles = document.querySelectorAll("[data-chart-toggle]");
+  const efficiencyView = document.getElementById("efficiencyView");
+  const litersView = document.getElementById("litersView");
+  const avgDisplay = document.getElementById("avgDisplay");
+  const totalDisplay = document.getElementById("totalDisplay");
+
+  toggles.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = (btn as HTMLElement).dataset.chartToggle;
+
+      toggles.forEach((b) => {
+        b.className = "px-sm py-xs bg-surface-container-highest rounded text-label-md text-outline border border-outline-variant cursor-pointer";
+      });
+      btn.className = "px-sm py-xs bg-primary text-on-primary rounded text-label-md border border-primary cursor-pointer";
+
+      if (mode === "efficiency") {
+        efficiencyView?.classList.remove("hidden");
+        litersView?.classList.add("hidden");
+        avgDisplay?.classList.remove("hidden");
+        totalDisplay?.classList.add("hidden");
+      } else {
+        efficiencyView?.classList.add("hidden");
+        litersView?.classList.remove("hidden");
+        avgDisplay?.classList.add("hidden");
+        totalDisplay?.classList.remove("hidden");
+      }
+    });
+  });
+</script>

@@ -49,6 +49,45 @@ const vehicleFuelLogs = await db
   .orderBy(desc(fuelLogs.date))
   .limit(10);
 
+const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+const chartFuelLogs = await db
+  .select()
+  .from(fuelLogs)
+  .where(eq(fuelLogs.vehicleId, id))
+  .orderBy(desc(fuelLogs.date));
+
+const dailyLiters: Record<string, number> = {};
+const dailyCost: Record<string, number> = {};
+for (const log of chartFuelLogs) {
+  if (!log.date || log.date < thirtyDaysAgo) continue;
+  const dayKey = new Date(log.date).toISOString().split("T")[0];
+  dailyLiters[dayKey] = (dailyLiters[dayKey] || 0) + log.liters;
+  dailyCost[dayKey] = (dailyCost[dayKey] || 0) + log.total;
+}
+const chartDays = Object.keys(dailyLiters).sort();
+const maxLiters = Math.max(...Object.values(dailyLiters), 1);
+
+const sortedForEfficiency = [...chartFuelLogs].sort((a, b) => (a.date || 0) - (b.date || 0));
+type EfficiencyPoint = { date: number; lper100km: number; liters: number; km: number };
+const efficiencyData: EfficiencyPoint[] = [];
+for (let i = 1; i < sortedForEfficiency.length; i++) {
+  const curr = sortedForEfficiency[i];
+  const prev = sortedForEfficiency[i - 1];
+  if (!curr.km || !prev.km || !curr.date || curr.date < thirtyDaysAgo) continue;
+  const dist = curr.km - prev.km;
+  if (dist <= 0) continue;
+  efficiencyData.push({
+    date: curr.date,
+    lper100km: (curr.liters / dist) * 100,
+    liters: curr.liters,
+    km: curr.km,
+  });
+}
+const maxEfficiency = Math.max(...efficiencyData.map((d) => d.lper100km), 1);
+const avgEfficiency = efficiencyData.length > 0
+  ? efficiencyData.reduce((sum, d) => sum + d.lper100km, 0) / efficiencyData.length
+  : null;
+
 const vehiclePhotos: string[] = vehicle.photos ? JSON.parse(vehicle.photos) : [];
 
 const fuelTypeLabels: Record<string, string> = {
@@ -112,7 +151,7 @@ const activityItems: ActivityItem[] = [
     date: f.date,
     icon: "local_gas_station",
     iconColor: "text-primary",
-    label: "Repostaje",
+    label: "Combustible",
     details: `${f.liters}L — ${f.total.toFixed(2)} €`,
     cost: f.km ? `${f.km.toLocaleString()} km` : null,
   })),
@@ -147,6 +186,14 @@ function gaugeColor(status: string, days: number | null, threshold: number): str
 }
 
 const fuelTypeLabel = vehicle.fuelType ? fuelTypeLabels[vehicle.fuelType] || vehicle.fuelType : "Sin especificar";
+const dateOptions = {
+  weekday: "short",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+}
+
+
 
 const gauges = [
   {
@@ -160,7 +207,8 @@ const gauges = [
   {
     label: "ITV",
     value: itvDays !== null ? (itvDays > 0 ? `${itvDays} días` : "Caducada") : "Sin fecha",
-    sublabel: vehicle.nextItvDate ? `Vence: ${new Date(vehicle.nextItvDate).toLocaleDateString("es-ES")}` : "Sin fecha configurada",
+    sublabel: vehicle.nextItvDate ? `Vence: ${new Date(vehicle.nextItvDate).toLocaleDateString("es-ES", dateOptions
+ )}` : "Sin fecha configurada",
     colorClass: gaugeColor(itvStatus, itvDays, 30),
     percentage: itvDays !== null ? Math.min(Math.max((itvDays / 365) * 100, 0), 100) : 0,
     circumference,
@@ -168,7 +216,7 @@ const gauges = [
   ...(vehicle.insuranceExpiry ? [{
     label: "Seguro",
     value: insuranceDays !== null ? (insuranceDays > 0 ? `${insuranceDays} días` : "Vencido") : "Sin fecha",
-    sublabel: `Vence: ${new Date(vehicle.insuranceExpiry).toLocaleDateString("es-ES")}`,
+    sublabel: `Vence: ${new Date(vehicle.insuranceExpiry).toLocaleDateString("es-ES", dateOptions)}`,
     colorClass: insuranceDays !== null && insuranceDays < 0 ? "text-error" : insuranceDays !== null && insuranceDays <= 30 ? "text-tertiary" : "text-secondary",
     percentage: insuranceDays !== null ? Math.min(Math.max((insuranceDays / 365) * 100, 0), 100) : 0,
     circumference,
@@ -214,7 +262,15 @@ const gauges = [
 
     {/* Section 3: Performance & Gauges */}
     <section class="grid grid-cols-1 xl:grid-cols-12 gap-lg">
-      <FuelChart vehicleId={id} />
+      <FuelChart
+        days={chartDays}
+        dailyLiters={dailyLiters}
+        dailyCost={dailyCost}
+        maxLiters={maxLiters}
+        efficiencyData={efficiencyData}
+        maxEfficiency={maxEfficiency}
+        avgEfficiency={avgEfficiency}
+      />
       <StatusGauges gauges={gauges} />
     </section>
 
