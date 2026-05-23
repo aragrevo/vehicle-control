@@ -1,13 +1,13 @@
 ---
-import AppLayout from "../../layouts/AppLayout.astro";
-import HeroCarousel from "../../components/vehicles/detail/HeroCarousel.astro";
-import QuickActions from "../../components/vehicles/detail/QuickActions.astro";
-import VehicleKPIs from "../../components/vehicles/detail/VehicleKPIs.astro";
-import FuelChart from "../../components/vehicles/detail/FuelChart.astro";
-import StatusGauges from "../../components/vehicles/detail/StatusGauges.astro";
-import ActivityLog from "../../components/vehicles/detail/ActivityLog.astro";
-import { db } from "../../db/client";
-import { vehicles, maintenances, documents, fuelLogs } from "../../db/schema";
+import AppLayout from "@/layouts/AppLayout.astro";
+import HeroCarousel from "@/components/vehicles/detail/HeroCarousel.astro";
+import QuickActions from "@/components/vehicles/detail/QuickActions.astro";
+import VehicleKPIs from "@/components/vehicles/detail/VehicleKPIs.astro";
+import FuelChart from "@/components/vehicles/detail/FuelChart.astro";
+import StatusGauges from "@/components/vehicles/detail/StatusGauges.astro";
+import ActivityLog from "@/components/vehicles/detail/ActivityLog.astro";
+import { db } from "@/db/client";
+import { vehicles, maintenances, documents, fuelLogs } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 if (!Astro.locals.user) {

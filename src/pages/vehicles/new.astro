@@ -1,9 +1,9 @@
 ---
-import AppLayout from "../../layouts/AppLayout.astro";
-import VehicleForm from "../../components/vehicles/VehicleForm.astro";
-import Card from "../../components/ui/Card.astro";
-import { db } from "../../db/client";
-import { vehicles } from "../../db/schema";
+import AppLayout from "@/layouts/AppLayout.astro";
+import VehicleForm from "@/components/vehicles/VehicleForm.astro";
+import Card from "@/components/ui/Card.astro";
+import { db } from "@/db/client";
+import { vehicles } from "@/db/schema";
 import { createId } from "@paralleldrive/cuid2";
 
 if (!Astro.locals.user) {

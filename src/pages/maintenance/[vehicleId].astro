@@ -1,11 +1,11 @@
 ---
-import AppLayout from '../../layouts/AppLayout.astro';
-import Card from '../../components/ui/Card.astro';
-import Button from '../../components/ui/Button.astro';
-import MaintenanceForm from '../../components/maintenance/MaintenanceForm.astro';
-import MaintenanceList from '../../components/maintenance/MaintenanceList.astro';
-import { db } from '../../db/client';
-import { vehicles, maintenances } from '../../db/schema';
+import AppLayout from '@/layouts/AppLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Button from '@/components/ui/Button.astro';
+import MaintenanceForm from '@/components/maintenance/MaintenanceForm.astro';
+import MaintenanceList from '@/components/maintenance/MaintenanceList.astro';
+import { db } from '@/db/client';
+import { vehicles, maintenances } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 

@@ -1,9 +1,9 @@
 ---
-import AppLayout from "../../layouts/AppLayout.astro";
-import VehicleCard from "../../components/vehicles/VehicleCard.astro";
-import Button from "../../components/ui/Button.astro";
-import { db } from "../../db/client";
-import { vehicles } from "../../db/schema";
+import AppLayout from "@/layouts/AppLayout.astro";
+import VehicleCard from "@/components/vehicles/VehicleCard.astro";
+import Button from "@/components/ui/Button.astro";
+import { db } from "@/db/client";
+import { vehicles } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 if (!Astro.locals.user) {

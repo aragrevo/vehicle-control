@@ -1,15 +1,13 @@
 ---
-import AppLayout from '../../layouts/AppLayout.astro';
-import Card from '../../components/ui/Card.astro';
-import Button from '../../components/ui/Button.astro';
-import Badge from '../../components/ui/Badge.astro';
-import DocumentForm from '../../components/documents/DocumentForm.astro';
-import DocumentList from '../../components/documents/DocumentList.astro';
-import { db } from '../../db/client';
-import { vehicles, documents } from '../../db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
-import { createId } from '@paralleldrive/cuid2';
-import { getDocumentStatus, getStatusVariant, getStatusLabel, getDocumentTypeLabel } from '../../lib/documents';
+import AppLayout from '@/layouts/AppLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Button from '@/components/ui/Button.astro';
+import Badge from '@/components/ui/Badge.astro';
+import DocumentForm from '@/components/documents/DocumentForm.astro';
+import DocumentList from '@/components/documents/DocumentList.astro';
+import { db } from '@/db/client';
+import { vehicles, documents } from '@/db/schema';
+import { getDocumentStatus, getStatusVariant, getStatusLabel, getDocumentTypeLabel } from '@/lib/documents';
 
 if (!Astro.locals.user) {
   return Astro.redirect('/login');
