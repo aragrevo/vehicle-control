@@ -1,28 +1,43 @@
 ---
-import AppLayout from '../../layouts/AppLayout.astro';
-import VehicleForm from '../../components/vehicles/VehicleForm.astro';
-import Card from '../../components/ui/Card.astro';
-import { db } from '../../db/client';
-import { vehicles } from '../../db/schema';
-import { createId } from '@paralleldrive/cuid2';
+import AppLayout from "../../layouts/AppLayout.astro";
+import VehicleForm from "../../components/vehicles/VehicleForm.astro";
+import Card from "../../components/ui/Card.astro";
+import { db } from "../../db/client";
+import { vehicles } from "../../db/schema";
+import { createId } from "@paralleldrive/cuid2";
 
 if (!Astro.locals.user) {
-  return Astro.redirect('/login');
+  return Astro.redirect("/login");
 }
 
-if (Astro.request.method === 'POST') {
+if (Astro.request.method === "POST") {
   const formData = await Astro.request.formData();
-  const plate = formData.get('plate')?.toString().toUpperCase();
-  const vin = formData.get('vin')?.toString().toUpperCase() || null;
-  const brand = formData.get('brand')?.toString();
-  const model = formData.get('model')?.toString();
-  const year = formData.get('year')?.toString();
-  const color = formData.get('color')?.toString() || null;
-  const fuelType = formData.get('fuelType')?.toString() || null;
-  const km = formData.get('km')?.toString();
+  const plate = formData.get("plate")?.toString().toUpperCase();
+  const vin = formData.get("vin")?.toString().toUpperCase() || null;
+  const brand = formData.get("brand")?.toString();
+  const model = formData.get("model")?.toString();
+  const year = formData.get("year")?.toString();
+  const color = formData.get("color")?.toString() || null;
+  const fuelType = formData.get("fuelType")?.toString() || null;
+  const km = formData.get("km")?.toString();
+  const nextItvDate = formData.get("nextItvDate")?.toString();
+  const insuranceExpiry = formData.get("insuranceExpiry")?.toString();
+  const oilChangeReminder = formData.get("oilChangeReminder")?.toString() === "true";
+  const nextRevisionKm = formData.get("nextRevisionKm")?.toString();
+  const revisionIntervalKm = formData.get("revisionIntervalKm")?.toString();
+  const photoFiles = formData.getAll("photos") as File[];
 
   if (plate && brand && model) {
     const vehicleId = createId();
+    const photos: string[] = [];
+
+    for (const file of photoFiles) {
+      if (file.size > 0 && file.size <= 5 * 1024 * 1024) {
+        const buffer = await file.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        photos.push(`data:${file.type};base64,${base64}`);
+      }
+    }
 
     await db.insert(vehicles).values({
       id: vehicleId,
@@ -36,6 +51,12 @@ if (Astro.request.method === 'POST') {
       fuelType,
       km: km ? parseInt(km) : 0,
       createdAt: Date.now(),
+      nextItvDate: nextItvDate ? new Date(nextItvDate).getTime() : null,
+      insuranceExpiry: insuranceExpiry ? new Date(insuranceExpiry).getTime() : null,
+      oilChangeReminder,
+      nextRevisionKm: nextRevisionKm ? parseInt(nextRevisionKm) : 15000,
+      revisionIntervalKm: revisionIntervalKm ? parseInt(revisionIntervalKm) : 15000,
+      photos: photos.length > 0 ? JSON.stringify(photos) : null,
     });
 
     return Astro.redirect(`/vehicles/${vehicleId}`);
@@ -44,17 +65,15 @@ if (Astro.request.method === 'POST') {
 ---
 
 <AppLayout title="Nuevo vehículo">
-  <div class="max-w-2xl">
-    <div class="mb-lg">
-      <a href="/vehicles" class="text-body-md text-on-surface-variant hover:text-primary transition-colors">
+  <div class="flex-1 overflow-y-auto custom-scrollbar p-md lg:p-xl">
+    <div class="max-w-5xl mx-auto">
+      <a
+        href="/vehicles"
+        class="text-body-md text-on-surface-variant hover:text-primary transition-colors pb-4"
+      >
         ← Volver a vehículos
       </a>
-      <h1 class="text-headline-lg text-on-surface mt-sm">Nuevo vehículo</h1>
-      <p class="text-body-lg text-on-surface-variant mt-xs">Añade un vehículo a tu flota</p>
-    </div>
-
-    <Card>
       <VehicleForm action="/vehicles/new" />
-    </Card>
+    </div>
   </div>
 </AppLayout>

@@ -39,6 +39,8 @@ const vehicleDocuments = await db
   .from(documents)
   .where(eq(documents.vehicleId, id));
 
+const vehiclePhotos: string[] = vehicle.photos ? JSON.parse(vehicle.photos) : [];
+
 const maintenanceTypes: Record<string, string> = {
   oil_change: 'Cambio de aceite',
   tires: 'Neumáticos',
@@ -192,6 +194,20 @@ const statusIcons = {
         </div>
       </Card>
     </div>
+
+    {/* Photos */}
+    {vehiclePhotos.length > 0 && (
+      <Card>
+        <h2 class="text-headline-sm text-on-surface mb-md">Fotos</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-md">
+          {vehiclePhotos.map((photo, index) => (
+            <div class="relative group aspect-square rounded-xl overflow-hidden border border-outline-variant">
+              <img class="w-full h-full object-cover" src={photo} alt={`Foto ${index + 1}`} />
+            </div>
+          ))}
+        </div>
+      </Card>
+    )}
 
     {/* Recent maintenance */}
     <Card>

@@ -27,6 +27,11 @@ export const vehicles = sqliteTable('vehicles', {
   km: integer('km').default(0),
   status: text('status').default('active'),
   createdAt: integer('created_at'),
+  nextItvDate: integer('next_itv_date'),
+  insuranceExpiry: integer('insurance_expiry'),
+  oilChangeReminder: integer('oil_change_reminder', { mode: 'boolean' }).default(true),
+  nextRevisionKm: integer('next_revision_km').default(15000),
+  revisionIntervalKm: integer('revision_interval_km').default(15000),
 });
 
 export const maintenances = sqliteTable('maintenances', {

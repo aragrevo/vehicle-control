@@ -1,0 +1,101 @@
+---
+import AppLayout from "../../../layouts/AppLayout.astro";
+import VehicleForm from "../../../components/vehicles/VehicleForm.astro";
+import { db } from "../../../db/client";
+import { vehicles } from "../../../db/schema";
+import { eq, and } from "drizzle-orm";
+
+if (!Astro.locals.user) {
+  return Astro.redirect("/login");
+}
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect("/vehicles");
+}
+
+const [vehicle] = await db
+  .select()
+  .from(vehicles)
+  .where(and(eq(vehicles.id, id), eq(vehicles.userId, Astro.locals.user.id)))
+  .limit(1);
+
+if (!vehicle) {
+  return Astro.redirect("/vehicles");
+}
+
+if (Astro.request.method === "POST") {
+  const formData = await Astro.request.formData();
+  const plate = formData.get("plate")?.toString().toUpperCase();
+  const vin = formData.get("vin")?.toString().toUpperCase() || null;
+  const brand = formData.get("brand")?.toString();
+  const model = formData.get("model")?.toString();
+  const year = formData.get("year")?.toString();
+  const color = formData.get("color")?.toString() || null;
+  const fuelType = formData.get("fuelType")?.toString() || null;
+  const km = formData.get("km")?.toString();
+  const nextItvDate = formData.get("nextItvDate")?.toString();
+  const insuranceExpiry = formData.get("insuranceExpiry")?.toString();
+  const oilChangeReminder = formData.get("oilChangeReminder")?.toString() === "true";
+  const nextRevisionKm = formData.get("nextRevisionKm")?.toString();
+  const revisionIntervalKm = formData.get("revisionIntervalKm")?.toString();
+  const photoFiles = formData.getAll("photos") as File[];
+  const deletePhotoIndex = formData.get("deletePhotoIndex")?.toString();
+
+  if (plate && brand && model) {
+    const existingPhotos: string[] = vehicle.photos ? JSON.parse(vehicle.photos) : [];
+
+    if (deletePhotoIndex !== undefined && deletePhotoIndex !== "") {
+      const idx = parseInt(deletePhotoIndex);
+      if (idx >= 0 && idx < existingPhotos.length) {
+        existingPhotos.splice(idx, 1);
+      }
+    }
+
+    for (const file of photoFiles) {
+      if (file.size > 0 && file.size <= 5 * 1024 * 1024) {
+        const buffer = await file.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString("base64");
+        existingPhotos.push(`data:${file.type};base64,${base64}`);
+      }
+    }
+
+    await db
+      .update(vehicles)
+      .set({
+        plate,
+        vin,
+        brand,
+        model,
+        year: year ? parseInt(year) : null,
+        color,
+        fuelType,
+        km: km ? parseInt(km) : 0,
+        nextItvDate: nextItvDate ? new Date(nextItvDate).getTime() : null,
+        insuranceExpiry: insuranceExpiry ? new Date(insuranceExpiry).getTime() : null,
+        oilChangeReminder,
+        nextRevisionKm: nextRevisionKm ? parseInt(nextRevisionKm) : 15000,
+        revisionIntervalKm: revisionIntervalKm ? parseInt(revisionIntervalKm) : 15000,
+        photos: existingPhotos.length > 0 ? JSON.stringify(existingPhotos) : null,
+      })
+      .where(eq(vehicles.id, id));
+
+    return Astro.redirect(`/vehicles/${id}`);
+  }
+}
+---
+
+<AppLayout title={`Editar ${vehicle.brand} ${vehicle.model}`}>
+  <div class="flex-1 overflow-y-auto custom-scrollbar p-md lg:p-xl">
+    <div class="max-w-5xl mx-auto">
+      <a
+        href={`/vehicles/${id}`}
+        class="text-body-md text-on-surface-variant hover:text-primary transition-colors pb-4"
+      >
+        ← Volver al vehículo
+      </a>
+      <VehicleForm action={`/vehicles/${id}/edit`} vehicle={vehicle} />
+    </div>
+  </div>
+</AppLayout>
