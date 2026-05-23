@@ -1,0 +1,44 @@
+---
+interface Props {
+  vehicleId: string;
+}
+
+const { vehicleId } = Astro.props;
+---
+
+<div class="xl:col-span-8 bg-surface-container p-lg rounded-xl border border-outline-variant relative overflow-hidden">
+  <div class="flex justify-between items-center mb-lg">
+    <div>
+      <h3 class="font-headline-sm text-headline-sm text-on-surface">Consumo de Combustible</h3>
+      <p class="text-body-md text-outline">Últimos 30 días</p>
+    </div>
+    <div class="flex gap-sm">
+      <span class="px-sm py-xs bg-surface-container-highest rounded text-label-md text-outline border border-outline-variant cursor-pointer">L/100KM</span>
+      <span class="px-sm py-xs bg-primary text-on-primary rounded text-label-md border border-primary cursor-pointer">TOTAL LITROS</span>
+    </div>
+  </div>
+  <div class="h-64 w-full flex items-end gap-2 px-4">
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[40%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[55%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[45%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[70%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[85%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[60%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[50%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[40%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[65%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[90%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[75%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[55%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[45%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[60%] rounded-t-sm"></div>
+    <div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[80%] rounded-t-sm"></div>
+  </div>
+  <div class="flex justify-between mt-sm border-t border-outline-variant/30 pt-xs">
+    <span class="text-[10px] text-outline">Oct 01</span>
+    <span class="text-[10px] text-outline">Oct 07</span>
+    <span class="text-[10px] text-outline">Oct 14</span>
+    <span class="text-[10px] text-outline">Oct 21</span>
+    <span class="text-[10px] text-outline">Oct 30</span>
+  </div>
+</div>

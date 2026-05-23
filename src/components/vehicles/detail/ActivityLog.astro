@@ -1,0 +1,76 @@
+---
+interface ActivityItem {
+  date: number | null;
+  icon: string;
+  iconColor: string;
+  label: string;
+  details: string;
+  cost: string | null;
+}
+
+interface Props {
+  items: ActivityItem[];
+  vehicleId: string;
+}
+
+const { items, vehicleId } = Astro.props;
+---
+
+<section class="bg-surface-container rounded-xl border border-outline-variant overflow-hidden">
+  <div class="px-lg py-md border-b border-outline-variant flex justify-between items-center">
+    <h3 class="font-headline-sm text-headline-sm text-on-surface">Actividad Reciente</h3>
+    <div class="flex gap-sm">
+      <a href={`/maintenance/${vehicleId}`} class="text-label-md text-primary hover:underline transition-all">Mantenimientos →</a>
+      <a href={`/fuel/${vehicleId}`} class="text-label-md text-primary hover:underline transition-all">Repostajes →</a>
+    </div>
+  </div>
+  {items.length === 0 ? (
+    <div class="p-lg text-center">
+      <p class="text-body-md text-on-surface-variant">No hay actividad registrada</p>
+    </div>
+  ) : (
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="bg-surface-container-low text-outline font-label-md border-b border-outline-variant">
+            <th class="px-lg py-md font-semibold">Fecha</th>
+            <th class="px-lg py-md font-semibold">Tipo</th>
+            <th class="px-lg py-md font-semibold">Detalles</th>
+            <th class="px-lg py-md font-semibold text-right">Dato</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant/30">
+          {items.map((item) => (
+            <tr class="hover:bg-surface-variant transition-colors group">
+              <td class="px-lg py-md font-data-mono text-sm">
+                {item.date
+                  ? new Date(item.date).toLocaleDateString("es-ES", {
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "—"}
+              </td>
+              <td class="px-lg py-md">
+                <span class="flex items-center gap-sm">
+                  <span
+                    class={`material-symbols-outlined ${item.iconColor} text-sm`}
+                    style="font-variation-settings: 'FILL' 1;"
+                  >
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </span>
+              </td>
+              <td class="px-lg py-md text-on-surface-variant">{item.details}</td>
+              <td class="px-lg py-md text-right font-data-mono text-sm text-on-surface-variant">
+                {item.cost || "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</section>

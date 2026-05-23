@@ -1,7 +1,11 @@
 ---
 import AppLayout from "../../layouts/AppLayout.astro";
-import Badge from "../../components/ui/Badge.astro";
-import Button from "../../components/ui/Button.astro";
+import HeroCarousel from "../../components/vehicles/detail/HeroCarousel.astro";
+import QuickActions from "../../components/vehicles/detail/QuickActions.astro";
+import VehicleKPIs from "../../components/vehicles/detail/VehicleKPIs.astro";
+import FuelChart from "../../components/vehicles/detail/FuelChart.astro";
+import StatusGauges from "../../components/vehicles/detail/StatusGauges.astro";
+import ActivityLog from "../../components/vehicles/detail/ActivityLog.astro";
 import { db } from "../../db/client";
 import { vehicles, maintenances, documents, fuelLogs } from "../../db/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -45,9 +49,7 @@ const vehicleFuelLogs = await db
   .orderBy(desc(fuelLogs.date))
   .limit(10);
 
-const vehiclePhotos: string[] = vehicle.photos
-  ? JSON.parse(vehicle.photos)
-  : [];
+const vehiclePhotos: string[] = vehicle.photos ? JSON.parse(vehicle.photos) : [];
 
 const fuelTypeLabels: Record<string, string> = {
   gasoline: "Gasolina",
@@ -66,12 +68,6 @@ const maintenanceTypes: Record<string, string> = {
   other: "Otro",
 };
 
-const documentTypes: Record<string, string> = {
-  itv: "ITV",
-  insurance: "Seguro",
-  registration: "Permiso de circulación",
-};
-
 function getDocumentStatus(expiresAt: number | null, alertDaysBefore: number) {
   if (!expiresAt) return "unknown";
   const now = Date.now();
@@ -80,20 +76,6 @@ function getDocumentStatus(expiresAt: number | null, alertDaysBefore: number) {
   if (diffDays <= alertDaysBefore) return "expiring";
   return "valid";
 }
-
-const statusVariants = {
-  valid: "success",
-  expiring: "warning",
-  expired: "danger",
-  unknown: "neutral",
-} as const;
-
-const statusLabels: Record<string, string> = {
-  valid: "Vigente",
-  expiring: "Vence pronto",
-  expired: "Caducado",
-  unknown: "Sin fecha",
-};
 
 function getDaysUntil(timestamp: number | null): number | null {
   if (!timestamp) return null;
@@ -118,7 +100,6 @@ const revisionRemaining =
 
 type ActivityItem = {
   date: number | null;
-  type: "fuel" | "maintenance";
   icon: string;
   iconColor: string;
   label: string;
@@ -127,38 +108,23 @@ type ActivityItem = {
 };
 
 const activityItems: ActivityItem[] = [
-  ...vehicleFuelLogs.map(
-    (f): ActivityItem => ({
-      date: f.date,
-      type: "fuel" as const,
-      icon: "local_gas_station",
-      iconColor: "text-primary",
-      label: "Repostaje",
-      details: `${f.liters}L — ${f.total.toFixed(2)} €`,
-      cost: f.km ? `${f.km.toLocaleString()} km` : null,
-    }),
-  ),
-  ...vehicleMaintenances.map(
-    (m): ActivityItem => ({
-      date: m.date,
-      type: "maintenance" as const,
-      icon:
-        m.type === "oil_change"
-          ? "oil_barrel"
-          : m.type === "tires"
-            ? "tire_repair"
-            : m.type === "brakes"
-              ? "disc_full"
-              : "build",
-      iconColor: "text-tertiary",
-      label: maintenanceTypes[m.type] || m.type,
-      details: m.description || "—",
-      cost: m.cost ? `${m.cost.toFixed(2)} €` : null,
-    }),
-  ),
-]
-  .sort((a, b) => (b.date || 0) - (a.date || 0))
-  .slice(0, 8);
+  ...vehicleFuelLogs.map((f): ActivityItem => ({
+    date: f.date,
+    icon: "local_gas_station",
+    iconColor: "text-primary",
+    label: "Repostaje",
+    details: `${f.liters}L — ${f.total.toFixed(2)} €`,
+    cost: f.km ? `${f.km.toLocaleString()} km` : null,
+  })),
+  ...vehicleMaintenances.map((m): ActivityItem => ({
+    date: m.date,
+    icon: m.type === "oil_change" ? "oil_barrel" : m.type === "tires" ? "tire_repair" : m.type === "brakes" ? "disc_full" : "build",
+    iconColor: "text-tertiary",
+    label: maintenanceTypes[m.type] || m.type,
+    details: m.description || "—",
+    cost: m.cost ? `${m.cost.toFixed(2)} €` : null,
+  })),
+].sort((a, b) => (b.date || 0) - (a.date || 0)).slice(0, 8);
 
 const itvDoc = vehicleDocuments.find((d) => d.type === "itv");
 const itvStatus = itvDoc
@@ -173,707 +139,86 @@ function gaugeOffset(days: number | null, maxDays: number): number {
   const pct = Math.min(Math.max(days / maxDays, 0), 1);
   return circumference * (1 - pct);
 }
+
+function gaugeColor(status: string, days: number | null, threshold: number): string {
+  if (status === "expired" || (days !== null && days < 0)) return "text-error";
+  if (status === "expiring" || (days !== null && days <= threshold)) return "text-tertiary";
+  return "text-primary";
+}
+
+const fuelTypeLabel = vehicle.fuelType ? fuelTypeLabels[vehicle.fuelType] || vehicle.fuelType : "Sin especificar";
+
+const gauges = [
+  {
+    label: "Próxima Revisión",
+    value: revisionRemaining !== null ? `${revisionRemaining.toLocaleString()} km` : "—",
+    sublabel: vehicle.nextRevisionKm ? `A los ${vehicle.nextRevisionKm.toLocaleString()} km` : "Sin configurar",
+    colorClass: revisionProgress > 90 ? "text-error" : revisionProgress > 70 ? "text-tertiary" : "text-primary",
+    percentage: revisionProgress,
+    circumference,
+  },
+  {
+    label: "ITV",
+    value: itvDays !== null ? (itvDays > 0 ? `${itvDays} días` : "Caducada") : "Sin fecha",
+    sublabel: vehicle.nextItvDate ? `Vence: ${new Date(vehicle.nextItvDate).toLocaleDateString("es-ES")}` : "Sin fecha configurada",
+    colorClass: gaugeColor(itvStatus, itvDays, 30),
+    percentage: itvDays !== null ? Math.min(Math.max((itvDays / 365) * 100, 0), 100) : 0,
+    circumference,
+  },
+  ...(vehicle.insuranceExpiry ? [{
+    label: "Seguro",
+    value: insuranceDays !== null ? (insuranceDays > 0 ? `${insuranceDays} días` : "Vencido") : "Sin fecha",
+    sublabel: `Vence: ${new Date(vehicle.insuranceExpiry).toLocaleDateString("es-ES")}`,
+    colorClass: insuranceDays !== null && insuranceDays < 0 ? "text-error" : insuranceDays !== null && insuranceDays <= 30 ? "text-tertiary" : "text-secondary",
+    percentage: insuranceDays !== null ? Math.min(Math.max((insuranceDays / 365) * 100, 0), 100) : 0,
+    circumference,
+  }] : []),
+];
 ---
 
 <AppLayout title={`${vehicle.brand} ${vehicle.model}`}>
   <div class="space-y-lg">
     {/* Section 1: Vehicle Identity */}
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-      <div
-        class="lg:col-span-2 relative overflow-hidden rounded-xl border border-outline-variant aspect-video"
-        id="heroCarousel"
-      >
-        {
-          vehiclePhotos.length > 0 ? (
-            vehiclePhotos.map((photo, index) => (
-              <img
-                class={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 aspect-video ${index === 0 ? "opacity-100" : "opacity-0"}`}
-                src={photo}
-                alt={`${vehicle.brand} ${vehicle.model} — Foto ${index + 1}`}
-                data-carousel-slide={index}
-              />
-            ))
-          ) : (
-            <div class="w-full h-full bg-surface-container-high flex items-center justify-center">
-              <span
-                class="material-symbols-outlined text-on-surface-variant"
-                style="font-size: 80px;"
-              >
-                directions_car
-              </span>
-            </div>
-          )
-        }
-        {
-          vehiclePhotos.length > 1 && (
-            <>
-              <button
-                type="button"
-                class="flex items-center justify-center absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 z-10 p-1.5 bg-black/40 hover:bg-black/70 rounded-full text-white transition-colors backdrop-blur-sm"
-                id="carouselPrev"
-              >
-                <span class="material-symbols-outlined">chevron_left</span>
-              </button>
-              <button
-                type="button"
-                class="flex items-center justify-center absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 z-10 p-1.5 bg-black/40 hover:bg-black/70 rounded-full text-white transition-colors backdrop-blur-sm"
-                id="carouselNext"
-              >
-                <span class="material-symbols-outlined">chevron_right</span>
-              </button>
-              <div
-                class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex gap-1.5"
-                id="carouselDots"
-              >
-                {vehiclePhotos.map((_, index) => (
-                  <button
-                    type="button"
-                    class={`w-2 h-2 rounded-full transition-colors ${index === 0 ? "bg-white" : "bg-white/40 hover:bg-white/60"}`}
-                    data-carousel-dot={index}
-                  />
-                ))}
-              </div>
-            </>
-          )
-        }
-        <div
-          class="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none"
-        >
-        </div>
-        <div
-          class="absolute bottom-0 left-0 p-lg w-full flex flex-col md:flex-row md:items-end justify-between gap-md"
-        >
-          <div>
-            <div class="flex items-center gap-sm mb-xs">
-              <span
-                class={`px-sm py-xs text-[10px] font-bold rounded flex items-center gap-xs ${
-                  vehicle.status === "active"
-                    ? "bg-primary/20 text-primary"
-                    : "bg-surface-container-highest text-on-surface-variant"
-                }`}
-              >
-                {
-                  vehicle.status === "active" && (
-                    <span class="w-2 h-2 rounded-full bg-primary status-pulse" />
-                  )
-                }
-                {vehicle.status === "active" ? "ACTIVO" : "INACTIVO"}
-              </span>
-              <span
-                class="font-data-mono text-data-mono bg-surface-container-highest px-sm py-xs rounded border border-outline-variant"
-                >{vehicle.plate}</span
-              >
-            </div>
-            <h1 class="font-headline-lg text-headline-lg text-on-surface">
-              {vehicle.brand}
-              {vehicle.model}
-            </h1>
-            <p class="text-on-surface-variant flex items-center gap-xs">
-              <span class="material-symbols-outlined text-sm">
-                {
-                  vehicle.fuelType === "electric"
-                    ? "ev_station"
-                    : "local_gas_station"
-                }
-              </span>
-              {
-                vehicle.fuelType
-                  ? fuelTypeLabels[vehicle.fuelType] || vehicle.fuelType
-                  : "Sin especificar"
-              }
-              {vehicle.year ? ` · ${vehicle.year}` : ""}
-              {vehicle.color ? ` · ${vehicle.color}` : ""}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div class="space-y-md">
-        <div
-          class="bg-surface-container p-lg rounded-xl border border-outline-variant flex flex-col  h-full"
-        >
-          <h3
-            class="font-label-md text-label-md text-outline uppercase tracking-wider mb-md"
-          >
-            Acciones Rápidas
-          </h3>
-          <div class="grid grid-cols-1 gap-sm">
-            <div class="mt-md p-md bg-error-container/10 border border-error-container/30 rounded-lg flex gap-md items-center">
-<span class="material-symbols-outlined text-error">report_problem</span>
-<div class="flex-1">
-<p class="text-label-md text-error font-bold">1 Critical Alert</p>
-<p class="text-[10px] text-error/80">Tire pressure low - Front Left</p>
-</div>
-</div>
-            <a
-              href={`/fuel/${id}?new=true`}
-              class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
-            >
-              <div class="flex items-center gap-md">
-                <span
-                  class="material-symbols-outlined text-primary"
-                  style="font-variation-settings: 'FILL' 1;">ev_station</span
-                >
-                <span class="font-label-md">Registrar Repostaje</span>
-              </div>
-              <span
-                class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform"
-                >chevron_right</span
-              >
-            </a>
-            <a
-              href={`/maintenance/${id}?new=true`}
-              class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
-            >
-              <div class="flex items-center gap-md">
-                <span
-                  class="material-symbols-outlined text-tertiary"
-                  style="font-variation-settings: 'FILL' 1;"
-                  >calendar_month</span
-                >
-                <span class="font-label-md">Programar Mantenimiento</span>
-              </div>
-              <span
-                class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform"
-                >chevron_right</span
-              >
-            </a>
-            <a
-              href={`/documents?vehicle=${id}`}
-              class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
-            >
-              <div class="flex items-center gap-md">
-                <span
-                  class="material-symbols-outlined text-secondary"
-                  style="font-variation-settings: 'FILL' 1;">description</span
-                >
-                <span class="font-label-md">Ver Documentos</span>
-              </div>
-              <span
-                class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform"
-                >chevron_right</span
-              >
-            </a>
-            <a
-              href={`/vehicles/${id}/edit`}
-              class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
-            >
-              <div class="flex items-center gap-md">
-                <span
-                  class="material-symbols-outlined text-on-surface-variant"
-                  style="font-variation-settings: 'FILL' 1;">settings</span
-                >
-                <span class="font-label-md">Configurar Vehículo</span>
-              </div>
-              <span
-                class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform"
-                >chevron_right</span
-              >
-            </a>
-          </div>
-
-          {
-            itvStatus === "expired" || itvStatus === "expiring" ? (
-              <div class="mt-md p-md bg-error-container/10 border border-error-container/30 rounded-lg flex gap-md items-center">
-                <span class="material-symbols-outlined text-error">
-                  report_problem
-                </span>
-                <div class="flex-1">
-                  <p class="text-label-md text-error font-bold">
-                    {itvStatus === "expired"
-                      ? "ITV Caducada"
-                      : "ITV por vencer"}
-                  </p>
-                  <p class="text-[10px] text-error/80">
-                    {itvDays !== null && itvDays < 0
-                      ? `Caducó hace ${Math.abs(itvDays)} días`
-                      : itvDays !== null
-                        ? `Vence en ${itvDays} días`
-                        : "Sin fecha configurada"}
-                  </p>
-                </div>
-              </div>
-            ) : null
-          }
-        </div>
-      </div>
+      <HeroCarousel
+        photos={vehiclePhotos}
+        brand={vehicle.brand}
+        model={vehicle.model}
+        plate={vehicle.plate}
+        status={vehicle.status}
+        fuelType={vehicle.fuelType}
+        year={vehicle.year}
+        color={vehicle.color}
+        fuelTypeLabel={fuelTypeLabel}
+      />
+      <QuickActions
+        vehicleId={id}
+        itvStatus={itvStatus}
+        itvDays={itvDays}
+      />
     </section>
 
     {/* Section 2: KPIs */}
-    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-md">
-      <div
-        class="bg-surface-container p-md rounded-xl border border-outline-variant"
-      >
-        <p class="text-label-md text-outline mb-sm uppercase">Odómetro</p>
-        <div class="flex items-end justify-between">
-          <h4
-            class="font-headline-md text-headline-md text-primary font-data-mono"
-          >
-            {vehicle.km !== null ? vehicle.km.toLocaleString() : "0"}
-            <span class="text-label-md text-outline">KM</span>
-          </h4>
-        </div>
-      </div>
+    <VehicleKPIs
+      km={vehicle.km}
+      fuelType={vehicle.fuelType}
+      fuelTypeLabel={fuelTypeLabel}
+      revisionProgress={revisionProgress}
+      revisionRemaining={revisionRemaining}
+      nextRevisionKm={vehicle.nextRevisionKm}
+      vin={vehicle.vin}
+      plate={vehicle.plate}
+      color={vehicle.color}
+      year={vehicle.year}
+    />
 
-      <div
-        class="bg-surface-container p-md rounded-xl border border-outline-variant"
-      >
-        <p class="text-label-md text-outline mb-sm uppercase">Combustible</p>
-        <div class="flex items-center gap-md">
-          <span
-            class="material-symbols-outlined text-primary"
-            style="font-size: 32px;"
-          >
-            {
-              vehicle.fuelType === "electric"
-                ? "ev_station"
-                : vehicle.fuelType === "diesel"
-                  ? "local_gas_station"
-                  : "local_gas_station"
-            }
-          </span>
-          <div>
-            <h4 class="font-headline-sm text-on-surface capitalize">
-              {
-                vehicle.fuelType
-                  ? fuelTypeLabels[vehicle.fuelType] || vehicle.fuelType
-                  : "—"
-              }
-            </h4>
-            <p class="text-[10px] text-outline">Tipo de combustible</p>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="bg-surface-container p-md rounded-xl border border-outline-variant"
-      >
-        <div class="flex justify-between mb-sm">
-          <p class="text-label-md text-outline uppercase">Próxima Revisión</p>
-          {
-            revisionRemaining !== null && (
-              <p class="text-label-md text-on-surface font-bold">
-                {revisionRemaining.toLocaleString()} km
-              </p>
-            )
-          }
-        </div>
-        <div
-          class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden mb-xs"
-        >
-          <div
-            class={`h-full rounded-full transition-all ${revisionProgress > 90 ? "bg-error" : revisionProgress > 70 ? "bg-tertiary" : "bg-primary"}`}
-            style={`width: ${revisionProgress}%`}
-          >
-          </div>
-        </div>
-        <p class="text-[10px] text-outline text-right">
-          {vehicle.km?.toLocaleString() || "0"} / {
-            vehicle.nextRevisionKm?.toLocaleString() || "15.000"
-          } km
-        </p>
-      </div>
-
-      <div
-        class="bg-surface-container p-md rounded-xl border border-outline-variant flex flex-col justify-center"
-      >
-        <p class="text-label-md text-outline mb-xs uppercase">Ubicación</p>
-        <div class="flex items-center gap-sm">
-          <span class="material-symbols-outlined text-primary text-sm"
-            >explore</span
-          >
-          <p class="font-body-md text-on-surface truncate">
-            {vehicle.vin || vehicle.plate}
-          </p>
-        </div>
-        <p class="text-[10px] text-outline mt-xs">
-          {vehicle.color ? `${vehicle.color} · ` : ""}{vehicle.year || ""}
-        </p>
-      </div>
-    </section>
-
- 
-    <!-- Section 3: Performance & Maintenance -->
+    {/* Section 3: Performance & Gauges */}
     <section class="grid grid-cols-1 xl:grid-cols-12 gap-lg">
-
-<!-- Chart Area -->
-<div class="xl:col-span-8 bg-surface-container p-lg rounded-xl border border-outline-variant relative overflow-hidden">
-<div class="flex justify-between items-center mb-lg">
-<div>
-<h3 class="font-headline-sm text-headline-sm text-on-surface">Fuel Consumption</h3>
-<p class="text-body-md text-outline">Last 30 days performance</p>
-</div>
-<div class="flex gap-sm">
-<span class="px-sm py-xs bg-surface-container-highest rounded text-label-md text-outline border border-outline-variant cursor-pointer">L/100KM</span>
-<span class="px-sm py-xs bg-primary text-on-primary rounded text-label-md border border-primary cursor-pointer">TOTAL LITERS</span>
-</div>
-</div>
-<div class="h-64 w-full flex items-end gap-2 px-4">
-<!-- Simulated bar chart -->
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[40%] rounded-t-sm" title="Day 1"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[55%] rounded-t-sm" title="Day 2"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[45%] rounded-t-sm" title="Day 3"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[70%] rounded-t-sm" title="Day 4"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[85%] rounded-t-sm" title="Day 5"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[60%] rounded-t-sm" title="Day 6"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[50%] rounded-t-sm" title="Day 7"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[40%] rounded-t-sm" title="Day 8"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[65%] rounded-t-sm" title="Day 9"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[90%] rounded-t-sm" title="Day 10"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[75%] rounded-t-sm" title="Day 11"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[55%] rounded-t-sm" title="Day 12"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[45%] rounded-t-sm" title="Day 13"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[60%] rounded-t-sm" title="Day 14"></div>
-<div class="flex-1 bg-primary/20 hover:bg-primary transition-colors h-[80%] rounded-t-sm" title="Day 15"></div>
-</div>
-<div class="flex justify-between mt-sm border-t border-outline-variant/30 pt-xs">
-<span class="text-[10px] text-outline">Oct 01</span>
-<span class="text-[10px] text-outline">Oct 07</span>
-<span class="text-[10px] text-outline">Oct 14</span>
-<span class="text-[10px] text-outline">Oct 21</span>
-<span class="text-[10px] text-outline">Oct 30</span>
-</div>
-</div>
-<!-- Gauges Area -->
-
-      <div class="xl:col-span-4 grid grid-cols-1 gap-md">
-        <div
-          class="bg-surface-container p-lg rounded-xl border border-outline-variant flex items-center gap-lg"
-        >
-          <div
-            class="relative w-24 h-24 flex items-center justify-center flex-shrink-0"
-          >
-            <svg class="w-full h-full transform -rotate-90">
-              <circle
-                class="text-surface-container-highest"
-                cx="48"
-                cy="48"
-                fill="transparent"
-                r="40"
-                stroke="currentColor"
-                stroke-width="8"></circle>
-              <circle
-                class={revisionProgress > 90
-                  ? "text-error"
-                  : revisionProgress > 70
-                    ? "text-tertiary"
-                    : "text-primary"}
-                cx="48"
-                cy="48"
-                fill="transparent"
-                r="40"
-                stroke="currentColor"
-                stroke-width="8"
-                stroke-dasharray={circumference}
-                stroke-dashoffset={circumference * (1 - revisionProgress / 100)}
-              ></circle>
-            </svg>
-            <div
-              class="absolute inset-0 flex flex-col items-center justify-center"
-            >
-              <span class="text-headline-sm font-data-mono"
-                >{Math.round(revisionProgress)}%</span
-              >
-            </div>
-          </div>
-          <div>
-            <h4 class="font-label-md text-on-surface">Próxima Revisión</h4>
-            <p
-              class={`font-headline-sm font-data-mono ${revisionProgress > 90 ? "text-error" : revisionProgress > 70 ? "text-tertiary" : "text-primary"}`}
-            >
-              {
-                revisionRemaining !== null
-                  ? `${revisionRemaining.toLocaleString()} km`
-                  : "—"
-              }
-            </p>
-            <p class="text-[10px] text-outline">
-              {
-                vehicle.nextRevisionKm
-                  ? `A los ${vehicle.nextRevisionKm.toLocaleString()} km`
-                  : "Sin configurar"
-              }
-            </p>
-          </div>
-        </div>
-
-        <div
-          class="bg-surface-container p-lg rounded-xl border border-outline-variant flex items-center gap-lg"
-        >
-          <div
-            class="relative w-24 h-24 flex items-center justify-center flex-shrink-0"
-          >
-            <svg class="w-full h-full transform -rotate-90">
-              <circle
-                class="text-surface-container-highest"
-                cx="48"
-                cy="48"
-                fill="transparent"
-                r="40"
-                stroke="currentColor"
-                stroke-width="8"></circle>
-              <circle
-                class={itvStatus === "expired"
-                  ? "text-error"
-                  : itvStatus === "expiring"
-                    ? "text-tertiary"
-                    : "text-primary"}
-                cx="48"
-                cy="48"
-                fill="transparent"
-                r="40"
-                stroke="currentColor"
-                stroke-width="8"
-                stroke-dasharray={circumference}
-                stroke-dashoffset={gaugeOffset(itvDays, 365)}></circle>
-            </svg>
-            <div
-              class="absolute inset-0 flex flex-col items-center justify-center"
-            >
-              <span class="text-headline-sm font-data-mono">
-                {itvDays !== null ? (itvDays > 0 ? itvDays : 0) : "?"}
-              </span>
-            </div>
-          </div>
-          <div>
-            <h4 class="font-label-md text-on-surface">ITV</h4>
-            <p
-              class={`font-headline-sm font-data-mono ${itvStatus === "expired" ? "text-error" : itvStatus === "expiring" ? "text-tertiary" : "text-primary"}`}
-            >
-              {
-                itvDays !== null
-                  ? itvDays > 0
-                    ? `${itvDays} días`
-                    : "Caducada"
-                  : "Sin fecha"
-              }
-            </p>
-            <p class="text-[10px] text-outline">
-              {
-                vehicle.nextItvDate
-                  ? `Vence: ${new Date(vehicle.nextItvDate).toLocaleDateString("es-ES")}`
-                  : "Sin fecha configurada"
-              }
-            </p>
-          </div>
-        </div>
-
-        {
-          vehicle.insuranceExpiry && (
-            <div class="bg-surface-container p-lg rounded-xl border border-outline-variant flex items-center gap-lg">
-              <div class="relative w-24 h-24 flex items-center justify-center flex-shrink-0">
-                <svg class="w-full h-full transform -rotate-90">
-                  <circle
-                    class="text-surface-container-highest"
-                    cx="48"
-                    cy="48"
-                    fill="transparent"
-                    r="40"
-                    stroke="currentColor"
-                    stroke-width="8"
-                  />
-                  <circle
-                    class={
-                      insuranceDays !== null && insuranceDays < 0
-                        ? "text-error"
-                        : insuranceDays !== null && insuranceDays <= 30
-                          ? "text-tertiary"
-                          : "text-secondary"
-                    }
-                    cx="48"
-                    cy="48"
-                    fill="transparent"
-                    r="40"
-                    stroke="currentColor"
-                    stroke-width="8"
-                    stroke-dasharray={circumference}
-                    stroke-dashoffset={gaugeOffset(insuranceDays, 365)}
-                  />
-                </svg>
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                  <span class="text-headline-sm font-data-mono">
-                    {insuranceDays !== null
-                      ? insuranceDays > 0
-                        ? insuranceDays
-                        : 0
-                      : "?"}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <h4 class="font-label-md text-on-surface">Seguro</h4>
-                <p
-                  class={`font-headline-sm font-data-mono ${insuranceDays !== null && insuranceDays < 0 ? "text-error" : insuranceDays !== null && insuranceDays <= 30 ? "text-tertiary" : "text-secondary"}`}
-                >
-                  {insuranceDays !== null
-                    ? insuranceDays > 0
-                      ? `${insuranceDays} días`
-                      : "Vencido"
-                    : "Sin fecha"}
-                </p>
-                <p class="text-[10px] text-outline">
-                  Vence:{" "}
-                  {new Date(vehicle.insuranceExpiry).toLocaleDateString(
-                    "es-ES",
-                  )}
-                </p>
-              </div>
-            </div>
-          )
-        }
-      </div>
+      <FuelChart vehicleId={id} />
+      <StatusGauges gauges={gauges} />
     </section>
 
     {/* Section 4: Activity Log */}
-    <section
-      class="bg-surface-container rounded-xl border border-outline-variant overflow-hidden"
-    >
-      <div
-        class="px-lg py-md border-b border-outline-variant flex justify-between items-center"
-      >
-        <h3 class="font-headline-sm text-headline-sm text-on-surface">
-          Actividad Reciente
-        </h3>
-        <div class="flex gap-sm">
-          <Button href={`/maintenance/${id}`} variant="ghost" size="sm">
-            Mantenimientos →
-          </Button>
-          <Button href={`/fuel/${id}`} variant="ghost" size="sm">
-            Repostajes →
-          </Button>
-        </div>
-      </div>
-      {
-        activityItems.length === 0 ? (
-          <div class="p-lg text-center">
-            <p class="text-body-md text-on-surface-variant">
-              No hay actividad registrada
-            </p>
-          </div>
-        ) : (
-          <div class="overflow-x-auto">
-            <table class="w-full text-left">
-              <thead>
-                <tr class="bg-surface-container-low text-outline font-label-md border-b border-outline-variant">
-                  <th class="px-lg py-md font-semibold">Fecha</th>
-                  <th class="px-lg py-md font-semibold">Tipo</th>
-                  <th class="px-lg py-md font-semibold">Detalles</th>
-                  <th class="px-lg py-md font-semibold text-right">Dato</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-outline-variant/30">
-                {activityItems.map((item) => (
-                  <tr class="hover:bg-surface-variant transition-colors group">
-                    <td class="px-lg py-md font-data-mono text-sm">
-                      {item.date
-                        ? new Date(item.date).toLocaleDateString("es-ES", {
-                            day: "2-digit",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "—"}
-                    </td>
-                    <td class="px-lg py-md">
-                      <span class="flex items-center gap-sm">
-                        <span
-                          class={`material-symbols-outlined ${item.iconColor} text-sm`}
-                          style="font-variation-settings: 'FILL' 1;"
-                        >
-                          {item.icon}
-                        </span>
-                        {item.label}
-                      </span>
-                    </td>
-                    <td class="px-lg py-md text-on-surface-variant">
-                      {item.details}
-                    </td>
-                    <td class="px-lg py-md text-right font-data-mono text-sm text-on-surface-variant">
-                      {item.cost || "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      }
-    </section>
+    <ActivityLog items={activityItems} vehicleId={id} />
   </div>
 </AppLayout>
-
-<script>
-  const carousel = document.getElementById("heroCarousel");
-  if (carousel) {
-    const slides = carousel.querySelectorAll("[data-carousel-slide]");
-    const dots = carousel.querySelectorAll("[data-carousel-dot]");
-    const prevBtn = document.getElementById("carouselPrev");
-    const nextBtn = document.getElementById("carouselNext");
-    let current = 0;
-    let interval: ReturnType<typeof setInterval>;
-
-    function goTo(index: number) {
-      slides[current]?.classList.remove("opacity-100");
-      slides[current]?.classList.add("opacity-0");
-      dots[current]?.classList.remove("bg-white");
-      dots[current]?.classList.add("bg-white/40");
-
-      current = (index + slides.length) % slides.length;
-
-      slides[current]?.classList.remove("opacity-0");
-      slides[current]?.classList.add("opacity-100");
-      dots[current]?.classList.remove("bg-white/40");
-      dots[current]?.classList.add("bg-white");
-    }
-
-    function startAutoplay() {
-      interval = setInterval(() => goTo(current + 1), 4000);
-    }
-
-    function resetAutoplay() {
-      clearInterval(interval);
-      startAutoplay();
-    }
-
-    if (slides.length > 1) {
-      prevBtn?.addEventListener("click", () => {
-        goTo(current - 1);
-        resetAutoplay();
-      });
-      nextBtn?.addEventListener("click", () => {
-        goTo(current + 1);
-        resetAutoplay();
-      });
-      dots.forEach((dot) => {
-        dot.addEventListener("click", () => {
-          const idx = Number((dot as HTMLElement).dataset.carouselDot);
-          goTo(idx);
-          resetAutoplay();
-        });
-      });
-
-      let touchStartX = 0;
-      carousel.addEventListener(
-        "touchstart",
-        (e) => {
-          touchStartX = (e as TouchEvent).touches[0].clientX;
-        },
-        { passive: true },
-      );
-      carousel.addEventListener(
-        "touchend",
-        (e) => {
-          const diff =
-            touchStartX - (e as TouchEvent).changedTouches[0].clientX;
-          if (Math.abs(diff) > 40) {
-            goTo(diff > 0 ? current + 1 : current - 1);
-            resetAutoplay();
-          }
-        },
-        { passive: true },
-      );
-
-      startAutoplay();
-    }
-  }
-</script>

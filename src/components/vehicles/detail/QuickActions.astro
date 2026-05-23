@@ -1,0 +1,77 @@
+---
+interface Props {
+  vehicleId: string;
+  itvStatus: string;
+  itvDays: number | null;
+}
+
+const { vehicleId, itvStatus, itvDays } = Astro.props;
+---
+
+<div class="space-y-md">
+  <div class="bg-surface-container p-lg rounded-xl border border-outline-variant flex flex-col h-full">
+    <h3 class="font-label-md text-label-md text-outline uppercase tracking-wider mb-md">
+      Acciones Rápidas
+    </h3>
+    <div class="grid grid-cols-1 gap-sm">
+      <a
+        href={`/fuel/${vehicleId}?new=true`}
+        class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
+      >
+        <div class="flex items-center gap-md">
+          <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">ev_station</span>
+          <span class="font-label-md">Registrar Repostaje</span>
+        </div>
+        <span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+      </a>
+      <a
+        href={`/maintenance/${vehicleId}?new=true`}
+        class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
+      >
+        <div class="flex items-center gap-md">
+          <span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+          <span class="font-label-md">Programar Mantenimiento</span>
+        </div>
+        <span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+      </a>
+      <a
+        href={`/documents?vehicle=${vehicleId}`}
+        class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
+      >
+        <div class="flex items-center gap-md">
+          <span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">description</span>
+          <span class="font-label-md">Ver Documentos</span>
+        </div>
+        <span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+      </a>
+      <a
+        href={`/vehicles/${vehicleId}/edit`}
+        class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
+      >
+        <div class="flex items-center gap-md">
+          <span class="material-symbols-outlined text-on-surface-variant" style="font-variation-settings: 'FILL' 1;">settings</span>
+          <span class="font-label-md">Configurar Vehículo</span>
+        </div>
+        <span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+      </a>
+    </div>
+
+    {itvStatus === "expired" || itvStatus === "expiring" ? (
+      <div class="mt-md p-md bg-error-container/10 border border-error-container/30 rounded-lg flex gap-md items-center">
+        <span class="material-symbols-outlined text-error">report_problem</span>
+        <div class="flex-1">
+          <p class="text-label-md text-error font-bold">
+            {itvStatus === "expired" ? "ITV Caducada" : "ITV por vencer"}
+          </p>
+          <p class="text-[10px] text-error/80">
+            {itvDays !== null && itvDays < 0
+              ? `Caducó hace ${Math.abs(itvDays)} días`
+              : itvDays !== null
+                ? `Vence en ${itvDays} días`
+                : "Sin fecha configurada"}
+          </p>
+        </div>
+      </div>
+    ) : null}
+  </div>
+</div>

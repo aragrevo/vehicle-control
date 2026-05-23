@@ -1,0 +1,76 @@
+---
+interface Props {
+  km: number | null;
+  fuelType: string | null;
+  fuelTypeLabel: string;
+  revisionProgress: number;
+  revisionRemaining: number | null;
+  nextRevisionKm: number | null;
+  vin: string | null;
+  plate: string;
+  color: string | null;
+  year: number | null;
+}
+
+const { km, fuelType, fuelTypeLabel, revisionProgress, revisionRemaining, nextRevisionKm, vin, plate, color, year } = Astro.props;
+---
+
+<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-md">
+  <div class="bg-surface-container p-md rounded-xl border border-outline-variant">
+    <p class="text-label-md text-outline mb-sm uppercase">Odómetro</p>
+    <div class="flex items-end justify-between">
+      <h4 class="font-headline-md text-headline-md text-primary font-data-mono">
+        {km !== null ? km.toLocaleString() : "0"}
+        <span class="text-label-md text-outline">KM</span>
+      </h4>
+    </div>
+  </div>
+
+  <div class="bg-surface-container p-md rounded-xl border border-outline-variant">
+    <p class="text-label-md text-outline mb-sm uppercase">Combustible</p>
+    <div class="flex items-center gap-md">
+      <span class="material-symbols-outlined text-primary" style="font-size: 32px;">
+        {fuelType === "electric" ? "ev_station" : "local_gas_station"}
+      </span>
+      <div>
+        <h4 class="font-headline-sm text-on-surface capitalize">
+          {fuelTypeLabel}
+        </h4>
+        <p class="text-[10px] text-outline">Tipo de combustible</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-surface-container p-md rounded-xl border border-outline-variant">
+    <div class="flex justify-between mb-sm">
+      <p class="text-label-md text-outline uppercase">Próxima Revisión</p>
+      {revisionRemaining !== null && (
+        <p class="text-label-md text-on-surface font-bold">
+          {revisionRemaining.toLocaleString()} km
+        </p>
+      )}
+    </div>
+    <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden mb-xs">
+      <div
+        class={`h-full rounded-full transition-all ${revisionProgress > 90 ? "bg-error" : revisionProgress > 70 ? "bg-tertiary" : "bg-primary"}`}
+        style={`width: ${revisionProgress}%`}
+      ></div>
+    </div>
+    <p class="text-[10px] text-outline text-right">
+      {km?.toLocaleString() || "0"} / {nextRevisionKm?.toLocaleString() || "15.000"} km
+    </p>
+  </div>
+
+  <div class="bg-surface-container p-md rounded-xl border border-outline-variant flex flex-col justify-center">
+    <p class="text-label-md text-outline mb-xs uppercase">Ubicación</p>
+    <div class="flex items-center gap-sm">
+      <span class="material-symbols-outlined text-primary text-sm">explore</span>
+      <p class="font-body-md text-on-surface truncate">
+        {vin || plate}
+      </p>
+    </div>
+    <p class="text-[10px] text-outline mt-xs">
+      {color ? `${color} · ` : ""}{year || ""}
+    </p>
+  </div>
+</section>
