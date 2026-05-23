@@ -1,12 +1,9 @@
 import type { APIRoute } from 'astro';
-import { lucia } from '@/lib/auth';
+import { logoutUser } from '@/lib/auth-service';
 
 export const POST: APIRoute = async ({ locals, cookies, redirect }) => {
-  const session = locals.session;
-
-  if (session) {
-    await lucia.invalidateSession(session.id);
-    const sessionCookie = lucia.createBlankSessionCookie();
+  if (locals.session) {
+    const sessionCookie = await logoutUser(locals.session.id);
     cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
   }
 

@@ -6,227 +6,31 @@ import VehicleKPIs from "@/components/vehicles/detail/VehicleKPIs.astro";
 import FuelChart from "@/components/vehicles/detail/FuelChart.astro";
 import StatusGauges from "@/components/vehicles/detail/StatusGauges.astro";
 import ActivityLog from "@/components/vehicles/detail/ActivityLog.astro";
-import { db } from "@/db/client";
-import { vehicles, maintenances, documents, fuelLogs } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { getVehicleDashboardData } from "@/lib/vehicle-dashboard";
 
 if (!Astro.locals.user) {
   return Astro.redirect("/login");
 }
 
 const { id } = Astro.params;
-
 if (!id) {
   return Astro.redirect("/vehicles");
 }
 
-const [vehicle] = await db
-  .select()
-  .from(vehicles)
-  .where(and(eq(vehicles.id, id), eq(vehicles.userId, Astro.locals.user.id)))
-  .limit(1);
-
-if (!vehicle) {
+const data = await getVehicleDashboardData(id, Astro.locals.user.id);
+if (!data) {
   return Astro.redirect("/vehicles");
 }
 
-const vehicleMaintenances = await db
-  .select()
-  .from(maintenances)
-  .where(eq(maintenances.vehicleId, id))
-  .orderBy(desc(maintenances.date))
-  .limit(10);
-
-const vehicleDocuments = await db
-  .select()
-  .from(documents)
-  .where(eq(documents.vehicleId, id));
-
-const vehicleFuelLogs = await db
-  .select()
-  .from(fuelLogs)
-  .where(eq(fuelLogs.vehicleId, id))
-  .orderBy(desc(fuelLogs.date))
-  .limit(10);
-
-const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-const chartFuelLogs = await db
-  .select()
-  .from(fuelLogs)
-  .where(eq(fuelLogs.vehicleId, id))
-  .orderBy(desc(fuelLogs.date));
-
-const dailyLiters: Record<string, number> = {};
-const dailyCost: Record<string, number> = {};
-for (const log of chartFuelLogs) {
-  if (!log.date || log.date < thirtyDaysAgo) continue;
-  const dayKey = new Date(log.date).toISOString().split("T")[0];
-  dailyLiters[dayKey] = (dailyLiters[dayKey] || 0) + log.liters;
-  dailyCost[dayKey] = (dailyCost[dayKey] || 0) + log.total;
-}
-const chartDays = Object.keys(dailyLiters).sort();
-const maxLiters = Math.max(...Object.values(dailyLiters), 1);
-
-const sortedForEfficiency = [...chartFuelLogs].sort((a, b) => (a.date || 0) - (b.date || 0));
-type EfficiencyPoint = { date: number; lper100km: number; liters: number; km: number };
-const efficiencyData: EfficiencyPoint[] = [];
-for (let i = 1; i < sortedForEfficiency.length; i++) {
-  const curr = sortedForEfficiency[i];
-  const prev = sortedForEfficiency[i - 1];
-  if (!curr.km || !prev.km || !curr.date || curr.date < thirtyDaysAgo) continue;
-  const dist = curr.km - prev.km;
-  if (dist <= 0) continue;
-  efficiencyData.push({
-    date: curr.date,
-    lper100km: (curr.liters / dist) * 100,
-    liters: curr.liters,
-    km: curr.km,
-  });
-}
-const maxEfficiency = Math.max(...efficiencyData.map((d) => d.lper100km), 1);
-const avgEfficiency = efficiencyData.length > 0
-  ? efficiencyData.reduce((sum, d) => sum + d.lper100km, 0) / efficiencyData.length
-  : null;
-
-const vehiclePhotos: string[] = vehicle.photos ? JSON.parse(vehicle.photos) : [];
-
-const fuelTypeLabels: Record<string, string> = {
-  gasoline: "Gasolina",
-  diesel: "Diésel",
-  electric: "Eléctrico",
-  hybrid: "Híbrido",
-  lpg: "GLP",
-  cng: "GNC",
-};
-
-const maintenanceTypes: Record<string, string> = {
-  oil_change: "Cambio de aceite",
-  tires: "Neumáticos",
-  brakes: "Frenos",
-  revision: "Revisión",
-  other: "Otro",
-};
-
-function getDocumentStatus(expiresAt: number | null, alertDaysBefore: number) {
-  if (!expiresAt) return "unknown";
-  const now = Date.now();
-  const diffDays = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return "expired";
-  if (diffDays <= alertDaysBefore) return "expiring";
-  return "valid";
-}
-
-function getDaysUntil(timestamp: number | null): number | null {
-  if (!timestamp) return null;
-  return Math.ceil((timestamp - Date.now()) / (1000 * 60 * 60 * 24));
-}
-
-function getRevisionProgress(): number {
-  if (!vehicle.km || !vehicle.nextRevisionKm) return 0;
-  const interval = vehicle.revisionIntervalKm || 15000;
-  const prevRevisionKm = vehicle.nextRevisionKm - interval;
-  const progress = ((vehicle.km - prevRevisionKm) / interval) * 100;
-  return Math.min(Math.max(progress, 0), 100);
-}
-
-const itvDays = getDaysUntil(vehicle.nextItvDate);
-const insuranceDays = getDaysUntil(vehicle.insuranceExpiry);
-const revisionProgress = getRevisionProgress();
-const revisionRemaining =
-  vehicle.nextRevisionKm && vehicle.km
-    ? Math.max(vehicle.nextRevisionKm - vehicle.km, 0)
-    : null;
-
-type ActivityItem = {
-  date: number | null;
-  icon: string;
-  iconColor: string;
-  label: string;
-  details: string;
-  cost: string | null;
-};
-
-const activityItems: ActivityItem[] = [
-  ...vehicleFuelLogs.map((f): ActivityItem => ({
-    date: f.date,
-    icon: "local_gas_station",
-    iconColor: "text-primary",
-    label: "Combustible",
-    details: `${f.liters}L — ${f.total.toFixed(2)} €`,
-    cost: f.km ? `${f.km.toLocaleString()} km` : null,
-  })),
-  ...vehicleMaintenances.map((m): ActivityItem => ({
-    date: m.date,
-    icon: m.type === "oil_change" ? "oil_barrel" : m.type === "tires" ? "tire_repair" : m.type === "brakes" ? "disc_full" : "build",
-    iconColor: "text-tertiary",
-    label: maintenanceTypes[m.type] || m.type,
-    details: m.description || "—",
-    cost: m.cost ? `${m.cost.toFixed(2)} €` : null,
-  })),
-].sort((a, b) => (b.date || 0) - (a.date || 0)).slice(0, 8);
-
-const itvDoc = vehicleDocuments.find((d) => d.type === "itv");
-const itvStatus = itvDoc
-  ? getDocumentStatus(itvDoc.expiresAt, itvDoc.alertDaysBefore ?? 30)
-  : vehicle.nextItvDate
-    ? getDocumentStatus(vehicle.nextItvDate, 30)
-    : "unknown";
-
-const circumference = 2 * Math.PI * 40;
-function gaugeOffset(days: number | null, maxDays: number): number {
-  if (days === null) return circumference;
-  const pct = Math.min(Math.max(days / maxDays, 0), 1);
-  return circumference * (1 - pct);
-}
-
-function gaugeColor(status: string, days: number | null, threshold: number): string {
-  if (status === "expired" || (days !== null && days < 0)) return "text-error";
-  if (status === "expiring" || (days !== null && days <= threshold)) return "text-tertiary";
-  return "text-primary";
-}
-
-const fuelTypeLabel = vehicle.fuelType ? fuelTypeLabels[vehicle.fuelType] || vehicle.fuelType : "Sin especificar";
-const dateOptions = {
-  weekday: "short",
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-}
-
-
-
-const gauges = [
-  {
-    label: "Próxima Revisión",
-    value: revisionRemaining !== null ? `${revisionRemaining.toLocaleString()} km` : "—",
-    sublabel: vehicle.nextRevisionKm ? `A los ${vehicle.nextRevisionKm.toLocaleString()} km` : "Sin configurar",
-    colorClass: revisionProgress > 90 ? "text-error" : revisionProgress > 70 ? "text-tertiary" : "text-primary",
-    percentage: revisionProgress,
-    circumference,
-  },
-  {
-    label: "ITV",
-    value: itvDays !== null ? (itvDays > 0 ? `${itvDays} días` : "Caducada") : "Sin fecha",
-    sublabel: vehicle.nextItvDate ? `Vence: ${new Date(vehicle.nextItvDate).toLocaleDateString("es-ES", dateOptions
- )}` : "Sin fecha configurada",
-    colorClass: gaugeColor(itvStatus, itvDays, 30),
-    percentage: itvDays !== null ? Math.min(Math.max((itvDays / 365) * 100, 0), 100) : 0,
-    circumference,
-  },
-  ...(vehicle.insuranceExpiry ? [{
-    label: "Seguro",
-    value: insuranceDays !== null ? (insuranceDays > 0 ? `${insuranceDays} días` : "Vencido") : "Sin fecha",
-    sublabel: `Vence: ${new Date(vehicle.insuranceExpiry).toLocaleDateString("es-ES", dateOptions)}`,
-    colorClass: insuranceDays !== null && insuranceDays < 0 ? "text-error" : insuranceDays !== null && insuranceDays <= 30 ? "text-tertiary" : "text-secondary",
-    percentage: insuranceDays !== null ? Math.min(Math.max((insuranceDays / 365) * 100, 0), 100) : 0,
-    circumference,
-  }] : []),
-];
+const {
+  vehicle, vehiclePhotos, vehicleFuelLogs, vehicleMaintenances,
+  chartData, efficiency, activityItems,
+  itvStatus, itvDays, revisionProgress, revisionRemaining, gauges, fuelTypeLabel,
+} = data;
 ---
 
 <AppLayout title={`${vehicle.brand} ${vehicle.model}`}>
   <div class="space-y-lg">
-    {/* Section 1: Vehicle Identity */}
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
       <HeroCarousel
         photos={vehiclePhotos}
@@ -246,7 +50,6 @@ const gauges = [
       />
     </section>
 
-    {/* Section 2: KPIs */}
     <VehicleKPIs
       km={vehicle.km}
       fuelType={vehicle.fuelType}
@@ -260,21 +63,19 @@ const gauges = [
       year={vehicle.year}
     />
 
-    {/* Section 3: Performance & Gauges */}
     <section class="grid grid-cols-1 xl:grid-cols-12 gap-lg">
       <FuelChart
-        days={chartDays}
-        dailyLiters={dailyLiters}
-        dailyCost={dailyCost}
-        maxLiters={maxLiters}
-        efficiencyData={efficiencyData}
-        maxEfficiency={maxEfficiency}
-        avgEfficiency={avgEfficiency}
+        days={chartData.days}
+        dailyLiters={chartData.dailyLiters}
+        dailyCost={chartData.dailyCost}
+        maxLiters={chartData.maxLiters}
+        efficiencyData={efficiency.data}
+        maxEfficiency={efficiency.maxEfficiency}
+        avgEfficiency={efficiency.avgEfficiency}
       />
       <StatusGauges gauges={gauges} />
     </section>
 
-    {/* Section 4: Activity Log */}
     <ActivityLog items={activityItems} vehicleId={id} />
   </div>
 </AppLayout>

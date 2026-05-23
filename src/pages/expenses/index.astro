@@ -3,54 +3,14 @@ import AppLayout from '@/layouts/AppLayout.astro';
 import Card from '@/components/ui/Card.astro';
 import Button from '@/components/ui/Button.astro';
 import ExpensesSummary from '@/components/fuel/ExpensesSummary.astro';
-import { db } from '@/db/client';
-import { vehicles, maintenances, fuelLogs } from '@/db/schema';
-import { eq, and, inArray, desc } from 'drizzle-orm';
+import { getUserExpenses } from '@/lib/expense-service';
 
 if (!Astro.locals.user) {
   return Astro.redirect('/login');
 }
 
 const vehicleFilter = Astro.url.searchParams.get('vehicle');
-
-const userVehicles = await db
-  .select()
-  .from(vehicles)
-  .where(eq(vehicles.userId, Astro.locals.user.id));
-
-const vehicleIds = userVehicles.map((v) => v.id);
-
-let userMaintenances;
-let userFuelLogs;
-
-if (vehicleFilter && vehicleIds.includes(vehicleFilter)) {
-  userMaintenances = await db
-    .select()
-    .from(maintenances)
-    .where(eq(maintenances.vehicleId, vehicleFilter))
-    .orderBy(desc(maintenances.date));
-
-  userFuelLogs = await db
-    .select()
-    .from(fuelLogs)
-    .where(eq(fuelLogs.vehicleId, vehicleFilter))
-    .orderBy(desc(fuelLogs.date));
-} else if (vehicleIds.length > 0) {
-  userMaintenances = await db
-    .select()
-    .from(maintenances)
-    .where(inArray(maintenances.vehicleId, vehicleIds))
-    .orderBy(desc(maintenances.date));
-
-  userFuelLogs = await db
-    .select()
-    .from(fuelLogs)
-    .where(inArray(fuelLogs.vehicleId, vehicleIds))
-    .orderBy(desc(fuelLogs.date));
-} else {
-  userMaintenances = [];
-  userFuelLogs = [];
-}
+const { vehicles: userVehicles, maintenances: userMaintenances, fuelLogs: userFuelLogs } = await getUserExpenses(Astro.locals.user.id, vehicleFilter ?? undefined);
 
 const vehicleMap = new Map(userVehicles.map((v) => [v.id, `${v.brand} ${v.model}`]));
 const selectedVehicle = vehicleFilter ? userVehicles.find((v) => v.id === vehicleFilter) : null;

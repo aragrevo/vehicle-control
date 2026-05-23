@@ -1,7 +1,5 @@
 import type { APIRoute } from 'astro';
-import { db } from '@/db/client';
-import { maintenances, vehicles } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { deleteMaintenance } from '@/lib/maintenance-service';
 
 export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
   if (!locals.user) {
@@ -16,17 +14,10 @@ export const POST: APIRoute = async ({ params, request, locals, redirect }) => {
     return new Response('Bad request', { status: 400 });
   }
 
-  const [vehicle] = await db
-    .select()
-    .from(vehicles)
-    .where(and(eq(vehicles.id, vehicleId), eq(vehicles.userId, locals.user.id)))
-    .limit(1);
-
-  if (!vehicle) {
+  const deleted = await deleteMaintenance(id, vehicleId, locals.user.id);
+  if (!deleted) {
     return new Response('Not found', { status: 404 });
   }
-
-  await db.delete(maintenances).where(eq(maintenances.id, id));
 
   return redirect(`/maintenance/${vehicleId}`);
 };
