@@ -1,0 +1,134 @@
+---
+import Button from '@/components/ui/Button.astro';
+
+interface Props {
+  vehicleId: string;
+  fuelLog?: {
+    id: string;
+    date: number | null;
+    liters: number;
+    pricePerLiter: number;
+    total: number;
+    km: number | null;
+  };
+  action: string;
+}
+
+const { vehicleId, fuelLog, action } = Astro.props;
+
+const today = new Date().toISOString().split('T')[0];
+---
+
+<form method="POST" action={action} class="space-y-md" id="fuel-form">
+  <input type="hidden" name="vehicleId" value={vehicleId} />
+
+  <div class="grid gap-md md:grid-cols-2">
+    <div>
+      <label for="date" class="block text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">
+        Fecha *
+      </label>
+      <input
+        type="date"
+        id="date"
+        name="date"
+        required
+        value={fuelLog?.date ? new Date(fuelLog.date).toISOString().split('T')[0] : today}
+        class="input-base"
+      />
+    </div>
+
+    <div>
+      <label for="km" class="block text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">
+        Kilometraje
+      </label>
+      <input
+        type="number"
+        id="km"
+        name="km"
+        min="0"
+        value={fuelLog?.km || ''}
+        class="input-base font-mono"
+        placeholder="50000"
+      />
+    </div>
+  </div>
+
+  <div class="grid gap-md md:grid-cols-3">
+    <div>
+      <label for="liters" class="block text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">
+        Litros *
+      </label>
+      <input
+        type="number"
+        id="liters"
+        name="liters"
+        required
+        min="0.01"
+        step="0.01"
+        value={fuelLog?.liters || ''}
+        class="input-base font-mono"
+        placeholder="45.50"
+      />
+    </div>
+
+    <div>
+      <label for="pricePerLiter" class="block text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">
+        Precio/litro (€) *
+      </label>
+      <input
+        type="number"
+        id="pricePerLiter"
+        name="pricePerLiter"
+        required
+        min="0.01"
+        step="0.001"
+        value={fuelLog?.pricePerLiter || ''}
+        class="input-base font-mono"
+        placeholder="1.459"
+      />
+    </div>
+
+    <div>
+      <label for="total" class="block text-label-md text-on-surface-variant uppercase tracking-wider mb-xs">
+        Total (€) *
+      </label>
+      <input
+        type="number"
+        id="total"
+        name="total"
+        required
+        min="0.01"
+        step="0.01"
+        value={fuelLog?.total || ''}
+        class="input-base font-mono"
+        placeholder="66.38"
+      />
+    </div>
+  </div>
+
+  <div class="flex items-center gap-md pt-md border-t border-outline-variant">
+    <Button type="submit" variant="primary">
+      {fuelLog ? 'Guardar cambios' : 'Registrar repostaje'}
+    </Button>
+    <Button href={`/fuel/${vehicleId}`} variant="ghost">
+      Cancelar
+    </Button>
+  </div>
+</form>
+
+<script>
+  const litersInput = document.getElementById('liters') as HTMLInputElement;
+  const priceInput = document.getElementById('pricePerLiter') as HTMLInputElement;
+  const totalInput = document.getElementById('total') as HTMLInputElement;
+
+  function calculateTotal() {
+    const liters = parseFloat(litersInput?.value || '0');
+    const price = parseFloat(priceInput?.value || '0');
+    if (liters > 0 && price > 0 && totalInput) {
+      totalInput.value = (liters * price).toFixed(2);
+    }
+  }
+
+  litersInput?.addEventListener('input', calculateTotal);
+  priceInput?.addEventListener('input', calculateTotal);
+</script>

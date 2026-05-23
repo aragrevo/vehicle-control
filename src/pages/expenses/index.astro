@@ -1,0 +1,111 @@
+---
+import AppLayout from '@/layouts/AppLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Button from '@/components/ui/Button.astro';
+import ExpensesSummary from '@/components/fuel/ExpensesSummary.astro';
+import { db } from '@/db/client';
+import { vehicles, maintenances, fuelLogs } from '@/db/schema';
+import { eq, and, inArray, desc } from 'drizzle-orm';
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/login');
+}
+
+const vehicleFilter = Astro.url.searchParams.get('vehicle');
+
+const userVehicles = await db
+  .select()
+  .from(vehicles)
+  .where(eq(vehicles.userId, Astro.locals.user.id));
+
+const vehicleIds = userVehicles.map((v) => v.id);
+
+let userMaintenances;
+let userFuelLogs;
+
+if (vehicleFilter && vehicleIds.includes(vehicleFilter)) {
+  userMaintenances = await db
+    .select()
+    .from(maintenances)
+    .where(eq(maintenances.vehicleId, vehicleFilter))
+    .orderBy(desc(maintenances.date));
+
+  userFuelLogs = await db
+    .select()
+    .from(fuelLogs)
+    .where(eq(fuelLogs.vehicleId, vehicleFilter))
+    .orderBy(desc(fuelLogs.date));
+} else if (vehicleIds.length > 0) {
+  userMaintenances = await db
+    .select()
+    .from(maintenances)
+    .where(inArray(maintenances.vehicleId, vehicleIds))
+    .orderBy(desc(maintenances.date));
+
+  userFuelLogs = await db
+    .select()
+    .from(fuelLogs)
+    .where(inArray(fuelLogs.vehicleId, vehicleIds))
+    .orderBy(desc(fuelLogs.date));
+} else {
+  userMaintenances = [];
+  userFuelLogs = [];
+}
+
+const vehicleMap = new Map(userVehicles.map((v) => [v.id, `${v.brand} ${v.model}`]));
+const selectedVehicle = vehicleFilter ? userVehicles.find((v) => v.id === vehicleFilter) : null;
+---
+
+<AppLayout title="Gastos">
+  <div class="space-y-lg">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-headline-lg text-on-surface">Gastos</h1>
+        <p class="text-body-lg text-on-surface-variant mt-xs">
+          {vehicleFilter
+            ? `Gastos de ${vehicleMap.get(vehicleFilter) || 'vehículo'}`
+            : 'Resumen de gastos de tu flota'}
+        </p>
+      </div>
+      <div class="flex items-center gap-sm">
+        {vehicleFilter && (
+          <Button href="/expenses" variant="secondary">
+            Ver todos
+          </Button>
+        )}
+      </div>
+    </div>
+
+    {userVehicles.length > 0 && (
+      <Card>
+        <h2 class="text-headline-sm text-on-surface mb-md">Filtrar por vehículo</h2>
+        <div class="flex flex-wrap gap-sm">
+          <Button
+            href="/expenses"
+            variant={!vehicleFilter ? 'primary' : 'ghost'}
+            size="sm"
+          >
+            Todos
+          </Button>
+          {userVehicles.map((v) => (
+            <Button
+              href={`/expenses?vehicle=${v.id}`}
+              variant={vehicleFilter === v.id ? 'primary' : 'ghost'}
+              size="sm"
+            >
+              {v.brand} {v.model}
+            </Button>
+          ))}
+        </div>
+      </Card>
+    )}
+
+    <Card>
+      <ExpensesSummary
+        maintenances={userMaintenances}
+        fuelLogs={userFuelLogs}
+        vehicleName={selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model}` : undefined}
+      />
+    </Card>
+  </div>
+</AppLayout>

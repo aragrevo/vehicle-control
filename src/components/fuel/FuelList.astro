@@ -1,0 +1,76 @@
+---
+import Button from '@/components/ui/Button.astro';
+
+interface Props {
+  fuelLogs: Array<{
+    id: string;
+    date: number | null;
+    liters: number;
+    pricePerLiter: number;
+    total: number;
+    km: number | null;
+  }>;
+  vehicleId: string;
+}
+
+const { fuelLogs, vehicleId } = Astro.props;
+---
+
+{fuelLogs.length === 0 ? (
+  <div class="text-center py-lg">
+    <div class="text-4xl mb-sm">⛽</div>
+    <p class="text-body-lg text-on-surface-variant">No hay repostajes registrados</p>
+    <Button href={`/fuel/${vehicleId}?new=true`} variant="primary" size="sm" class="mt-md">
+      Añadir repostaje
+    </Button>
+  </div>
+) : (
+  <div class="overflow-x-auto">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-outline-variant">
+          <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Fecha</th>
+          <th class="text-left text-label-md text-on-surface-variant uppercase pb-sm">Km</th>
+          <th class="text-right text-label-md text-on-surface-variant uppercase pb-sm">Litros</th>
+          <th class="text-right text-label-md text-on-surface-variant uppercase pb-sm">Precio/L</th>
+          <th class="text-right text-label-md text-on-surface-variant uppercase pb-sm">Total</th>
+          <th class="text-right text-label-md text-on-surface-variant uppercase pb-sm">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant">
+        {fuelLogs.map((f) => (
+          <tr class="hover:bg-surface-container-high transition-colors">
+            <td class="py-sm text-body-md text-on-surface">
+              {f.date ? new Date(f.date).toLocaleDateString('es-ES') : '-'}
+            </td>
+            <td class="py-sm font-mono text-data-mono text-on-surface-variant">
+              {f.km?.toLocaleString() || '-'}
+            </td>
+            <td class="py-sm text-body-md text-on-surface text-right font-mono">
+              {f.liters.toFixed(2)} L
+            </td>
+            <td class="py-sm text-body-md text-on-surface-variant text-right font-mono">
+              {f.pricePerLiter.toFixed(3)} €
+            </td>
+            <td class="py-sm text-body-md text-on-surface text-right font-mono font-medium">
+              {f.total.toFixed(2)} €
+            </td>
+            <td class="py-sm text-right">
+              <div class="flex items-center justify-end gap-xs">
+                <Button href={`/fuel/${vehicleId}/edit/${f.id}`} variant="ghost" size="sm">
+                  Editar
+                </Button>
+                <form method="POST" action={`/api/fuel/${f.id}/delete`}>
+                  <input type="hidden" name="vehicleId" value={vehicleId} />
+                  <Button type="submit" variant="ghost" size="sm" class="text-error hover:text-error">
+                    Eliminar
+                  </Button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}

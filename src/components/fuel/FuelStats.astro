@@ -1,0 +1,96 @@
+---
+interface Props {
+  fuelLogs: Array<{
+    date: number | null;
+    liters: number;
+    pricePerLiter: number;
+    total: number;
+    km: number | null;
+  }>;
+}
+
+const { fuelLogs } = Astro.props;
+
+function calculateStats() {
+  if (fuelLogs.length === 0) {
+    return {
+      totalLiters: 0,
+      totalCost: 0,
+      avgPricePerLiter: 0,
+      avgConsumption: 0,
+      totalRefuels: 0,
+    };
+  }
+
+  const totalLiters = fuelLogs.reduce((sum, f) => sum + f.liters, 0);
+  const totalCost = fuelLogs.reduce((sum, f) => sum + f.total, 0);
+  const avgPricePerLiter = totalLiters > 0 ? totalCost / totalLiters : 0;
+
+  const sortedLogs = [...fuelLogs]
+    .filter((f) => f.km !== null && f.date !== null)
+    .sort((a, b) => (a.date || 0) - (b.date || 0));
+
+  let totalKmDriven = 0;
+  let totalLitersForConsumption = 0;
+
+  for (let i = 1; i < sortedLogs.length; i++) {
+    const prev = sortedLogs[i - 1];
+    const curr = sortedLogs[i];
+    if (prev.km && curr.km) {
+      const kmDiff = curr.km - prev.km;
+      if (kmDiff > 0) {
+        totalKmDriven += kmDiff;
+        totalLitersForConsumption += curr.liters;
+      }
+    }
+  }
+
+  const avgConsumption = totalKmDriven > 0
+    ? (totalLitersForConsumption / totalKmDriven) * 100
+    : 0;
+
+  return {
+    totalLiters,
+    totalCost,
+    avgPricePerLiter,
+    avgConsumption,
+    totalRefuels: fuelLogs.length,
+  };
+}
+
+const stats = calculateStats();
+---
+
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-md">
+  <div class="bg-surface-container-high rounded-lg p-md text-center">
+    <span class="material-symbols-outlined text-primary text-2xl mb-xs">local_gas_station</span>
+    <p class="font-mono text-headline-md text-on-surface">{stats.totalRefuels}</p>
+    <p class="text-label-md text-on-surface-variant uppercase">Repostajes</p>
+  </div>
+
+  <div class="bg-surface-container-high rounded-lg p-md text-center">
+    <span class="material-symbols-outlined text-primary text-2xl mb-xs">water_drop</span>
+    <p class="font-mono text-headline-md text-on-surface">{stats.totalLiters.toFixed(1)}</p>
+    <p class="text-label-md text-on-surface-variant uppercase">Litros totales</p>
+  </div>
+
+  <div class="bg-surface-container-high rounded-lg p-md text-center">
+    <span class="material-symbols-outlined text-primary text-2xl mb-xs">payments</span>
+    <p class="font-mono text-headline-md text-on-surface">{stats.totalCost.toFixed(2)} €</p>
+    <p class="text-label-md text-on-surface-variant uppercase">Gasto total</p>
+  </div>
+
+  <div class="bg-surface-container-high rounded-lg p-md text-center">
+    <span class="material-symbols-outlined text-primary text-2xl mb-xs">sell</span>
+    <p class="font-mono text-headline-md text-on-surface">{stats.avgPricePerLiter.toFixed(3)} €</p>
+    <p class="text-label-md text-on-surface-variant uppercase">Precio medio/L</p>
+  </div>
+
+  <div class="bg-surface-container-high rounded-lg p-md text-center col-span-2 lg:col-span-1">
+    <span class="material-symbols-outlined text-primary text-2xl mb-xs">speed</span>
+    <p class="font-mono text-headline-md text-on-surface">
+      {stats.avgConsumption > 0 ? `${stats.avgConsumption.toFixed(1)} L/100km` : '—'}
+    </p>
+    <p class="text-label-md text-on-surface-variant uppercase">Consumo medio</p>
+  </div>
+</div>

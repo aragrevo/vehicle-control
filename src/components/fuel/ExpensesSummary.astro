@@ -1,0 +1,158 @@
+---
+interface Props {
+  maintenances: Array<{
+    date: number | null;
+    cost: number | null;
+    type: string;
+  }>;
+  fuelLogs: Array<{
+    date: number | null;
+    total: number;
+  }>;
+  vehicleName?: string;
+}
+
+const { maintenances, fuelLogs, vehicleName } = Astro.props;
+
+const monthNames = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+const maintenanceTypeLabels: Record<string, string> = {
+  oil_change: 'Cambio de aceite',
+  tires: 'Neumáticos',
+  brakes: 'Frenos',
+  revision: 'Revisión',
+  other: 'Otro',
+};
+
+interface ExpenseItem {
+  date: Date;
+  amount: number;
+  category: 'fuel' | 'maintenance';
+  label: string;
+}
+
+const allExpenses: ExpenseItem[] = [
+  ...fuelLogs.map((f) => ({
+    date: new Date(f.date || Date.now()),
+    amount: f.total,
+    category: 'fuel' as const,
+    label: 'Repostaje',
+  })),
+  ...maintenances
+    .filter((m) => m.cost !== null && m.cost > 0)
+    .map((m) => ({
+      date: new Date(m.date || Date.now()),
+      amount: m.cost!,
+      category: 'maintenance' as const,
+      label: maintenanceTypeLabels[m.type] || m.type,
+    })),
+].sort((a, b) => b.date.getTime() - a.date.getTime());
+
+interface MonthGroup {
+  key: string;
+  label: string;
+  fuel: number;
+  maintenance: number;
+  total: number;
+  items: ExpenseItem[];
+}
+
+const monthGroups = new Map<string, MonthGroup>();
+
+allExpenses.forEach((expense) => {
+  const key = `${expense.date.getFullYear()}-${String(expense.date.getMonth() + 1).padStart(2, '0')}`;
+  const label = `${monthNames[expense.date.getMonth()]} ${expense.date.getFullYear()}`;
+
+  if (!monthGroups.has(key)) {
+    monthGroups.set(key, { key, label, fuel: 0, maintenance: 0, total: 0, items: [] });
+  }
+
+  const group = monthGroups.get(key)!;
+  group.items.push(expense);
+  group.total += expense.amount;
+
+  if (expense.category === 'fuel') {
+    group.fuel += expense.amount;
+  } else {
+    group.maintenance += expense.amount;
+  }
+});
+
+const sortedGroups = Array.from(monthGroups.values());
+
+const grandTotal = allExpenses.reduce((sum, e) => sum + e.amount, 0);
+const fuelTotal = allExpenses.filter((e) => e.category === 'fuel').reduce((sum, e) => sum + e.amount, 0);
+const maintenanceTotal = allExpenses.filter((e) => e.category === 'maintenance').reduce((sum, e) => sum + e.amount, 0);
+---
+
+{vehicleName && (
+  <p class="text-body-lg text-on-surface-variant mb-md">{vehicleName}</p>
+)}
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md mb-lg">
+  <div class="bg-surface-container-high rounded-lg p-md">
+    <p class="text-label-md text-on-surface-variant uppercase mb-xs">Total general</p>
+    <p class="font-mono text-headline-lg text-on-surface">{grandTotal.toFixed(2)} €</p>
+  </div>
+  <div class="bg-surface-container-high rounded-lg p-md">
+    <p class="text-label-md text-on-surface-variant uppercase mb-xs">Combustible</p>
+    <p class="font-mono text-headline-lg text-primary">{fuelTotal.toFixed(2)} €</p>
+  </div>
+  <div class="bg-surface-container-high rounded-lg p-md">
+    <p class="text-label-md text-on-surface-variant uppercase mb-xs">Mantenimiento</p>
+    <p class="font-mono text-headline-lg text-tertiary">{maintenanceTotal.toFixed(2)} €</p>
+  </div>
+</div>
+
+{sortedGroups.length === 0 ? (
+  <div class="text-center py-lg">
+    <div class="text-4xl mb-sm">📊</div>
+    <p class="text-body-lg text-on-surface-variant">No hay gastos registrados</p>
+  </div>
+) : (
+  <div class="space-y-md">
+    {sortedGroups.map((group) => (
+      <div class="bg-surface-container rounded-lg border border-outline-variant overflow-hidden">
+        <div class="flex items-center justify-between p-md bg-surface-container-high">
+          <h3 class="text-headline-sm text-on-surface">{group.label}</h3>
+          <div class="flex items-center gap-lg">
+            <div class="text-right hidden sm:block">
+              <p class="text-label-md text-on-surface-variant">Combustible</p>
+              <p class="font-mono text-body-md text-primary">{group.fuel.toFixed(2)} €</p>
+            </div>
+            <div class="text-right hidden sm:block">
+              <p class="text-label-md text-on-surface-variant">Mantenimiento</p>
+              <p class="font-mono text-body-md text-tertiary">{group.maintenance.toFixed(2)} €</p>
+            </div>
+            <div class="text-right">
+              <p class="text-label-md text-on-surface-variant">Total</p>
+              <p class="font-mono text-headline-sm text-on-surface">{group.total.toFixed(2)} €</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="divide-y divide-outline-variant">
+          {group.items.map((item) => (
+            <div class="flex items-center justify-between px-md py-sm">
+              <div class="flex items-center gap-sm">
+                <span class={`material-symbols-outlined text-lg ${item.category === 'fuel' ? 'text-primary' : 'text-tertiary'}`}>
+                  {item.category === 'fuel' ? 'local_gas_station' : 'build'}
+                </span>
+                <div>
+                  <p class="text-body-md text-on-surface">{item.label}</p>
+                  <p class="text-body-sm text-on-surface-variant">
+                    {item.date.toLocaleDateString('es-ES')}
+                  </p>
+                </div>
+              </div>
+              <p class="font-mono text-body-md text-on-surface">{item.amount.toFixed(2)} €</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+)}

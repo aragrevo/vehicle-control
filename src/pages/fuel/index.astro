@@ -1,0 +1,147 @@
+---
+import AppLayout from '@/layouts/AppLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Button from '@/components/ui/Button.astro';
+import FuelStats from '@/components/fuel/FuelStats.astro';
+import FuelList from '@/components/fuel/FuelList.astro';
+import FuelForm from '@/components/fuel/FuelForm.astro';
+import { db } from '@/db/client';
+import { vehicles, fuelLogs } from '@/db/schema';
+import { eq, and, desc, inArray } from 'drizzle-orm';
+import { createId } from '@paralleldrive/cuid2';
+
+if (!Astro.locals.user) {
+  return Astro.redirect('/login');
+}
+
+const vehicleFilter = Astro.url.searchParams.get('vehicle');
+const showForm = Astro.url.searchParams.get('new') === 'true';
+
+const userVehicles = await db
+  .select()
+  .from(vehicles)
+  .where(eq(vehicles.userId, Astro.locals.user.id));
+
+const vehicleIds = userVehicles.map((v) => v.id);
+
+let userFuelLogs;
+if (vehicleFilter && vehicleIds.includes(vehicleFilter)) {
+  userFuelLogs = await db
+    .select()
+    .from(fuelLogs)
+    .where(eq(fuelLogs.vehicleId, vehicleFilter))
+    .orderBy(desc(fuelLogs.date));
+} else if (vehicleIds.length > 0) {
+  userFuelLogs = await db
+    .select()
+    .from(fuelLogs)
+    .where(inArray(fuelLogs.vehicleId, vehicleIds))
+    .orderBy(desc(fuelLogs.date));
+} else {
+  userFuelLogs = [];
+}
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const vehicleId = formData.get('vehicleId')?.toString();
+  const date = formData.get('date')?.toString();
+  const liters = formData.get('liters')?.toString();
+  const pricePerLiter = formData.get('pricePerLiter')?.toString();
+  const total = formData.get('total')?.toString();
+  const km = formData.get('km')?.toString();
+
+  if (vehicleId && liters && pricePerLiter && total) {
+    await db.insert(fuelLogs).values({
+      id: createId(),
+      vehicleId,
+      date: date ? new Date(date).getTime() : Date.now(),
+      liters: parseFloat(liters),
+      pricePerLiter: parseFloat(pricePerLiter),
+      total: parseFloat(total),
+      km: km ? parseInt(km) : null,
+    });
+
+    if (km) {
+      await db.update(vehicles).set({ km: parseInt(km) }).where(eq(vehicles.id, vehicleId));
+    }
+
+    return Astro.redirect(vehicleFilter ? `/fuel?vehicle=${vehicleFilter}` : '/fuel');
+  }
+}
+
+const vehicleMap = new Map(userVehicles.map((v) => [v.id, `${v.brand} ${v.model}`]));
+const selectedVehicle = vehicleFilter ? userVehicles.find((v) => v.id === vehicleFilter) : null;
+---
+
+<AppLayout title="Repostajes">
+  <div class="space-y-lg">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-headline-lg text-on-surface">Repostajes</h1>
+        <p class="text-body-lg text-on-surface-variant mt-xs">
+          {vehicleFilter
+            ? `Repostajes de ${vehicleMap.get(vehicleFilter) || 'vehículo'}`
+            : 'Todos los repostajes de tu flota'}
+        </p>
+      </div>
+      <div class="flex items-center gap-sm">
+        {vehicleFilter && (
+          <Button href="/fuel" variant="secondary">
+            Ver todos
+          </Button>
+        )}
+        {!showForm && userVehicles.length > 0 && (
+          <Button
+            href={vehicleFilter ? `/fuel?vehicle=${vehicleFilter}&new=true` : '/fuel?new=true'}
+            variant="primary"
+          >
+            + Nuevo repostaje
+          </Button>
+        )}
+      </div>
+    </div>
+
+    {showForm && (
+      <Card>
+        <h2 class="text-headline-sm text-on-surface mb-md">Nuevo repostaje</h2>
+        {vehicleFilter ? (
+          <FuelForm
+            vehicleId={vehicleFilter}
+            action={`/fuel?vehicle=${vehicleFilter}`}
+          />
+        ) : (
+          <div class="space-y-md">
+            <p class="text-body-md text-on-surface-variant">Selecciona un vehículo:</p>
+            <div class="grid gap-sm">
+              {userVehicles.map((v) => (
+                <Button
+                  href={`/fuel?vehicle=${v.id}&new=true`}
+                  variant="ghost"
+                  class="justify-start"
+                >
+                  🚗 {v.brand} {v.model}
+                  <span class="font-mono text-primary ml-sm">{v.plate}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
+    )}
+
+    <Card>
+      <h2 class="text-headline-sm text-on-surface mb-md">Estadísticas</h2>
+      <FuelStats fuelLogs={userFuelLogs} />
+    </Card>
+
+    <Card>
+      <h2 class="text-headline-sm text-on-surface mb-md">
+        {vehicleFilter ? 'Historial de repostajes' : 'Todos los repostajes'}
+      </h2>
+      <FuelList
+        fuelLogs={userFuelLogs}
+        vehicleId={vehicleFilter || (userVehicles[0]?.id || '')}
+      />
+    </Card>
+  </div>
+</AppLayout>
