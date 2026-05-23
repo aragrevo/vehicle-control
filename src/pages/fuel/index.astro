@@ -4,10 +4,8 @@ import FuelSummaryCards from '@/components/fuel/FuelSummaryCards.astro';
 import FuelFilters from '@/components/fuel/FuelFilters.astro';
 import FuelTable from '@/components/fuel/FuelTable.astro';
 import FuelForm from '@/components/fuel/FuelForm.astro';
-import { db } from '@/db/client';
-import { vehicles, fuelLogs } from '@/db/schema';
-import { eq, and, desc, inArray } from 'drizzle-orm';
-import { createId } from '@paralleldrive/cuid2';
+import { getUserFuelLogs, createFuelLog, parseFuelFormData, calculateFuelStats } from '@/lib/fuel-service';
+import { getUserVehicles } from '@/lib/vehicle-service';
 
 if (!Astro.locals.user) {
   return Astro.redirect('/login');
@@ -16,99 +14,21 @@ if (!Astro.locals.user) {
 const vehicleFilter = Astro.url.searchParams.get('vehicle');
 const showForm = Astro.url.searchParams.get('new') === 'true';
 
-const userVehicles = await db
-  .select()
-  .from(vehicles)
-  .where(eq(vehicles.userId, Astro.locals.user.id));
-    
-const vehicleIds = userVehicles.map((v) => v.id);
-
-let userFuelLogs;
-if (vehicleFilter && vehicleIds.includes(vehicleFilter)) {
-  userFuelLogs = await db
-    .select()
-    .from(fuelLogs)
-    .where(eq(fuelLogs.vehicleId, vehicleFilter))
-    .orderBy(desc(fuelLogs.date));
-} else if (vehicleIds.length > 0) {
-  userFuelLogs = await db
-    .select()
-    .from(fuelLogs)
-    .where(inArray(fuelLogs.vehicleId, vehicleIds))
-    .orderBy(desc(fuelLogs.date));
-} else {
-  userFuelLogs = [];
-}
-
 if (Astro.request.method === 'POST') {
-  const formData = await Astro.request.formData();
-  const vehicleId = formData.get('vehicleId')?.toString();
-  const date = formData.get('date')?.toString();
-  const liters = formData.get('liters')?.toString();
-  const pricePerLiter = formData.get('pricePerLiter')?.toString();
-  const total = formData.get('total')?.toString();
-  const km = formData.get('km')?.toString();
-
-  if (vehicleId && liters && pricePerLiter && total) {
-    await db.insert(fuelLogs).values({
-      id: createId(),
-      vehicleId,
-      date: date ? new Date(date).getTime() : Date.now(),
-      liters: parseFloat(liters),
-      pricePerLiter: parseFloat(pricePerLiter),
-      total: parseFloat(total),
-      km: km ? parseInt(km) : null,
-    });
-
-    if (km) {
-      await db.update(vehicles).set({ km: parseInt(km) }).where(eq(vehicles.id, vehicleId));
-    }
-
+  const data = await parseFuelFormData(await Astro.request.formData());
+  if (data.vehicleId && data.liters && data.pricePerLiter && data.total) {
+    await createFuelLog(data);
     return Astro.redirect(vehicleFilter ? `/fuel?vehicle=${vehicleFilter}` : '/fuel');
   }
 }
 
+const [userVehicles, userFuelLogs] = await Promise.all([
+  getUserVehicles(Astro.locals.user.id),
+  getUserFuelLogs(Astro.locals.user.id, vehicleFilter ?? undefined),
+]);
+
 const vehicleMap = new Map(userVehicles.map((v) => [v.id, { name: `${v.brand} ${v.model}`, plate: v.plate, brand: v.brand }]));
-
-function calculateStats(logs: typeof userFuelLogs) {
-  if (logs.length === 0) return { totalCost: 0, avgConsumption: 0, costTrend: null, consumptionTrend: null, refuelCount: 0, avgPricePerLiter: 0, totalLiters: 0 };
-  const now = Date.now();
-  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-  const sixtyDaysAgo = now - 60 * 24 * 60 * 60 * 1000;
-
-  const recent = logs.filter((f) => f.date && f.date >= thirtyDaysAgo);
-  const previous = logs.filter((f) => f.date && f.date >= sixtyDaysAgo && f.date < thirtyDaysAgo);
-
-  const totalCost = logs.reduce((sum, f) => sum + f.total, 0);
-  const totalLiters = logs.reduce((sum, f) => sum + f.liters, 0);
-  const avgPricePerLiter = totalLiters > 0 ? totalCost / totalLiters : 0;
-  const refuelCount = logs.length;
-
-  const recentCost = recent.reduce((sum, f) => sum + f.total, 0);
-  const prevCost = previous.reduce((sum, f) => sum + f.total, 0);
-  const costTrend = prevCost > 0 ? ((recentCost - prevCost) / prevCost) * 100 : null;
-
-  function calcConsumption(logSubset: typeof userFuelLogs) {
-    const sorted = [...logSubset].filter((f) => f.km !== null && f.date !== null).sort((a, b) => (a.date || 0) - (b.date || 0));
-    let totalKm = 0;
-    let liters = 0;
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i - 1].km && sorted[i].km) {
-        const diff = sorted[i].km! - sorted[i - 1].km!;
-        if (diff > 0) { totalKm += diff; liters += sorted[i].liters; }
-      }
-    }
-    return totalKm > 0 ? (liters / totalKm) * 100 : 0;
-  }
-
-  const avgConsumption = calcConsumption(logs);
-  const prevConsumption = calcConsumption(previous);
-  const consumptionTrend = prevConsumption > 0 ? ((avgConsumption - prevConsumption) / prevConsumption) * 100 : null;
-
-  return { totalCost, avgConsumption, costTrend, consumptionTrend, refuelCount, avgPricePerLiter, totalLiters };
-}
-
-const stats = calculateStats(userFuelLogs);
+const stats = calculateFuelStats(userFuelLogs);
 const ctaHref = vehicleFilter ? `/fuel?vehicle=${vehicleFilter}&new=true` : '/fuel?new=true';
 ---
 
@@ -118,9 +38,9 @@ const ctaHref = vehicleFilter ? `/fuel?vehicle=${vehicleFilter}&new=true` : '/fu
       totalCost={stats.totalCost}
       avgConsumption={stats.avgConsumption}
       ctaHref={ctaHref}
-      costTrend={stats.costTrend}
-      consumptionTrend={stats.consumptionTrend}
-      refuelCount={stats.refuelCount}
+      costTrend={null}
+      consumptionTrend={null}
+      refuelCount={stats.totalRefuels}
       avgPricePerLiter={stats.avgPricePerLiter}
       totalLiters={stats.totalLiters}
     />
