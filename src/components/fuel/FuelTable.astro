@@ -1,0 +1,101 @@
+---
+interface FuelLog {
+  id: string;
+  vehicleId: string;
+  date: number | null;
+  liters: number;
+  pricePerLiter: number;
+  total: number;
+  km: number | null;
+}
+
+interface VehicleInfo {
+  name: string;
+  plate: string;
+}
+
+interface Props {
+  fuelLogs: FuelLog[];
+  vehicleMap: Map<string, VehicleInfo>;
+}
+
+const { fuelLogs, vehicleMap } = Astro.props;
+---
+
+<div class="bg-surface-container border border-outline-variant rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left border-collapse">
+      <thead>
+        <tr class="bg-surface-container-highest/50 border-b border-outline-variant">
+          <th class="px-md py-4 text-label-md font-bold text-on-surface-variant uppercase tracking-wider">Fecha</th>
+          <th class="px-md py-4 text-label-md font-bold text-on-surface-variant uppercase tracking-wider">Vehículo</th>
+          <th class="px-md py-4 text-label-md font-bold text-on-surface-variant uppercase tracking-wider">Litros</th>
+          <th class="px-md py-4 text-label-md font-bold text-on-surface-variant uppercase tracking-wider text-right">Precio/L</th>
+          <th class="px-md py-4 text-label-md font-bold text-on-surface-variant uppercase tracking-wider text-right">Total</th>
+          <th class="px-md py-4 text-label-md font-bold text-on-surface-variant uppercase tracking-wider text-right">Odómetro</th>
+          <th class="px-md py-4 text-label-md font-bold text-on-surface-variant uppercase tracking-wider"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant">
+        {fuelLogs.length === 0 ? (
+          <tr>
+            <td colspan="7" class="px-md py-xl text-center">
+              <span class="material-symbols-outlined text-on-surface-variant" style="font-size: 48px;">local_gas_station</span>
+              <p class="text-body-lg text-on-surface-variant mt-sm">Sin registros de combustible</p>
+            </td>
+          </tr>
+        ) : (
+          fuelLogs.map((f) => {
+            const v = vehicleMap.get(f.vehicleId);
+            return (
+              <tr class="hover:bg-surface-bright/5 transition-colors group">
+                <td class="px-md py-4">
+                  <div class="text-body-md text-on-surface">
+                    {f.date ? new Date(f.date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                  </div>
+                  <div class="text-[11px] text-on-surface-variant">
+                    {f.date ? new Date(f.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </div>
+                </td>
+                <td class="px-md py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-surface-container-highest rounded flex items-center justify-center">
+                      <span class="material-symbols-outlined text-primary text-lg">local_gas_station</span>
+                    </div>
+                    <div>
+                      <div class="text-body-md font-bold text-on-surface">{v?.name || '—'}</div>
+                      {v && (
+                        <div class="font-data-mono text-[12px] bg-surface-container-highest px-1.5 py-0.5 rounded text-on-surface-variant inline-block">{v.plate}</div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td class="px-md py-4 text-body-md text-on-surface">{f.liters.toFixed(2)} L</td>
+                <td class="px-md py-4 text-body-md text-on-surface text-right font-data-mono">{f.pricePerLiter.toFixed(3)} €</td>
+                <td class="px-md py-4 text-body-md font-bold text-primary text-right font-data-mono">{f.total.toFixed(2)} €</td>
+                <td class="px-md py-4 text-body-md text-on-surface-variant text-right font-data-mono">
+                  {f.km ? `${f.km.toLocaleString()} km` : '—'}
+                </td>
+                <td class="px-md py-4 text-right">
+                  <form method="POST" action={`/api/fuel/${f.id}/delete`} class="inline">
+                    <input type="hidden" name="vehicleId" value={f.vehicleId} />
+                    <button type="submit" class="p-2 hover:bg-error/10 rounded-lg text-on-surface-variant hover:text-error transition-colors opacity-0 group-hover:opacity-100">
+                      <span class="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            );
+          })
+        )}
+      </tbody>
+    </table>
+  </div>
+  {fuelLogs.length > 0 && (
+    <div class="px-md py-4 flex items-center justify-between border-t border-outline-variant bg-surface-container-low">
+      <span class="text-label-md text-on-surface-variant">
+        {fuelLogs.length} registro{fuelLogs.length !== 1 ? 's' : ''}
+      </span>
+    </div>
+  )}
+</div>

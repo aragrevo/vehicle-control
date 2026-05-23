@@ -39,7 +39,7 @@ const allExpenses: ExpenseItem[] = [
     date: new Date(f.date || Date.now()),
     amount: f.total,
     category: 'fuel' as const,
-    label: 'Repostaje',
+    label: 'Combustible',
   })),
   ...maintenances
     .filter((m) => m.cost !== null && m.cost > 0)

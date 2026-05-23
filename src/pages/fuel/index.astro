@@ -1,9 +1,8 @@
 ---
 import AppLayout from '@/layouts/AppLayout.astro';
-import Card from '@/components/ui/Card.astro';
-import Button from '@/components/ui/Button.astro';
-import FuelStats from '@/components/fuel/FuelStats.astro';
-import FuelList from '@/components/fuel/FuelList.astro';
+import FuelSummaryCards from '@/components/fuel/FuelSummaryCards.astro';
+import FuelFilters from '@/components/fuel/FuelFilters.astro';
+import FuelTable from '@/components/fuel/FuelTable.astro';
 import FuelForm from '@/components/fuel/FuelForm.astro';
 import { db } from '@/db/client';
 import { vehicles, fuelLogs } from '@/db/schema';
@@ -69,41 +68,41 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const vehicleMap = new Map(userVehicles.map((v) => [v.id, `${v.brand} ${v.model}`]));
-const selectedVehicle = vehicleFilter ? userVehicles.find((v) => v.id === vehicleFilter) : null;
+const vehicleMap = new Map(userVehicles.map((v) => [v.id, { name: `${v.brand} ${v.model}`, plate: v.plate, brand: v.brand }]));
+
+function calculateStats(logs: typeof userFuelLogs) {
+  if (logs.length === 0) return { totalCost: 0, avgConsumption: 0 };
+  const totalCost = logs.reduce((sum, f) => sum + f.total, 0);
+  const sorted = [...logs].filter((f) => f.km !== null && f.date !== null).sort((a, b) => (a.date || 0) - (b.date || 0));
+  let totalKm = 0;
+  let litersForConsumption = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i - 1].km && sorted[i].km) {
+      const diff = sorted[i].km! - sorted[i - 1].km!;
+      if (diff > 0) { totalKm += diff; litersForConsumption += sorted[i].liters; }
+    }
+  }
+  return {
+    totalCost,
+    avgConsumption: totalKm > 0 ? (litersForConsumption / totalKm) * 100 : 0,
+  };
+}
+
+const stats = calculateStats(userFuelLogs);
+const ctaHref = vehicleFilter ? `/fuel?vehicle=${vehicleFilter}&new=true` : '/fuel?new=true';
 ---
 
-<AppLayout title="Repostajes">
+<AppLayout title="Combustible">
   <div class="space-y-lg">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-headline-lg text-on-surface">Repostajes</h1>
-        <p class="text-body-lg text-on-surface-variant mt-xs">
-          {vehicleFilter
-            ? `Repostajes de ${vehicleMap.get(vehicleFilter) || 'vehículo'}`
-            : 'Todos los repostajes de tu flota'}
-        </p>
-      </div>
-      <div class="flex items-center gap-sm">
-        {vehicleFilter && (
-          <Button href="/fuel" variant="secondary">
-            Ver todos
-          </Button>
-        )}
-        {!showForm && userVehicles.length > 0 && (
-          <Button
-            href={vehicleFilter ? `/fuel?vehicle=${vehicleFilter}&new=true` : '/fuel?new=true'}
-            variant="primary"
-          >
-            + Nuevo repostaje
-          </Button>
-        )}
-      </div>
-    </div>
+    <FuelSummaryCards
+      totalCost={stats.totalCost}
+      avgConsumption={stats.avgConsumption}
+      ctaHref={ctaHref}
+    />
 
     {showForm && (
-      <Card>
-        <h2 class="text-headline-sm text-on-surface mb-md">Nuevo repostaje</h2>
+      <div class="bg-surface-container border border-outline-variant rounded-xl p-lg">
+        <h2 class="text-headline-sm text-on-surface mb-md">Nueva carga</h2>
         {vehicleFilter ? (
           <FuelForm
             vehicleId={vehicleFilter}
@@ -114,34 +113,32 @@ const selectedVehicle = vehicleFilter ? userVehicles.find((v) => v.id === vehicl
             <p class="text-body-md text-on-surface-variant">Selecciona un vehículo:</p>
             <div class="grid gap-sm">
               {userVehicles.map((v) => (
-                <Button
+                <a
                   href={`/fuel?vehicle=${v.id}&new=true`}
-                  variant="ghost"
-                  class="justify-start"
+                  class="p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
                 >
-                  🚗 {v.brand} {v.model}
-                  <span class="font-mono text-primary ml-sm">{v.plate}</span>
-                </Button>
+                  <div class="flex items-center gap-md">
+                    <span class="material-symbols-outlined text-primary">directions_car</span>
+                    <span class="font-label-md">{v.brand} {v.model}</span>
+                    <span class="font-data-mono text-primary">{v.plate}</span>
+                  </div>
+                  <span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+                </a>
               ))}
             </div>
           </div>
         )}
-      </Card>
+      </div>
     )}
 
-    <Card>
-      <h2 class="text-headline-sm text-on-surface mb-md">Estadísticas</h2>
-      <FuelStats fuelLogs={userFuelLogs} />
-    </Card>
+    <FuelFilters
+      vehicles={userVehicles}
+      selectedVehicleId={vehicleFilter}
+    />
 
-    <Card>
-      <h2 class="text-headline-sm text-on-surface mb-md">
-        {vehicleFilter ? 'Historial de repostajes' : 'Todos los repostajes'}
-      </h2>
-      <FuelList
-        fuelLogs={userFuelLogs}
-        vehicleId={vehicleFilter || (userVehicles[0]?.id || '')}
-      />
-    </Card>
+    <FuelTable
+      fuelLogs={userFuelLogs}
+      vehicleMap={vehicleMap}
+    />
   </div>
 </AppLayout>

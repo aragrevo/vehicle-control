@@ -1,0 +1,49 @@
+---
+interface Vehicle {
+  id: string;
+  brand: string;
+  model: string;
+  plate: string;
+}
+
+interface Props {
+  vehicles: Vehicle[];
+  selectedVehicleId: string | null;
+}
+
+const { vehicles, selectedVehicleId } = Astro.props;
+---
+
+<div class="flex flex-wrap items-center gap-md bg-surface-container-high p-4 rounded-xl border border-outline-variant">
+  <div class="flex items-center gap-2">
+    <span class="material-symbols-outlined text-on-surface-variant">filter_list</span>
+    <span class="text-label-md font-bold text-on-surface-variant uppercase">Filtros</span>
+  </div>
+  <div class="h-6 w-px bg-outline-variant"></div>
+  <div class="relative min-w-[180px]">
+    <select
+      class="appearance-none bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface w-full focus:outline-none focus:border-primary cursor-pointer"
+      id="vehicleSelect"
+    >
+      <option value="">Todos los vehículos</option>
+      {vehicles.map((v) => (
+        <option value={v.id} selected={selectedVehicleId === v.id}>{v.brand} {v.model} ({v.plate})</option>
+      ))}
+    </select>
+    <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+  </div>
+  {selectedVehicleId && (
+    <a href="/fuel" class="flex items-center gap-2 px-4 py-2 text-label-md font-bold text-on-surface-variant border border-outline-variant rounded-lg hover:bg-surface-bright/10 transition-colors active:scale-95">
+      <span class="material-symbols-outlined text-lg">close</span>
+      Limpiar
+    </a>
+  )}
+</div>
+
+<script>
+  const vehicleSelect = document.getElementById('vehicleSelect') as HTMLSelectElement;
+  vehicleSelect?.addEventListener('change', () => {
+    const value = vehicleSelect.value;
+    window.location.href = value ? `/fuel?vehicle=${value}` : '/fuel';
+  });
+</script>

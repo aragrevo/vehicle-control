@@ -19,9 +19,9 @@ const { fuelLogs, vehicleId } = Astro.props;
 {fuelLogs.length === 0 ? (
   <div class="text-center py-lg">
     <div class="text-4xl mb-sm">⛽</div>
-    <p class="text-body-lg text-on-surface-variant">No hay repostajes registrados</p>
+    <p class="text-body-lg text-on-surface-variant">No hay cargas registradas</p>
     <Button href={`/fuel/${vehicleId}?new=true`} variant="primary" size="sm" class="mt-md">
-      Añadir repostaje
+      Añadir carga
     </Button>
   </div>
 ) : (
