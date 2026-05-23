@@ -2,7 +2,6 @@
 import AppLayout from '../../layouts/AppLayout.astro';
 import Badge from '../../components/ui/Badge.astro';
 import Button from '../../components/ui/Button.astro';
-import Card from '../../components/ui/Card.astro';
 import { db } from '../../db/client';
 import { vehicles, maintenances, documents } from '../../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
@@ -40,6 +39,15 @@ const vehicleDocuments = await db
   .where(eq(documents.vehicleId, id));
 
 const vehiclePhotos: string[] = vehicle.photos ? JSON.parse(vehicle.photos) : [];
+
+const fuelTypeLabels: Record<string, string> = {
+  gasoline: 'Gasolina',
+  diesel: 'Diésel',
+  electric: 'Eléctrico',
+  hybrid: 'Híbrido',
+  lpg: 'GLP',
+  cng: 'GNC',
+};
 
 const maintenanceTypes: Record<string, string> = {
   oil_change: 'Cambio de aceite',
@@ -87,7 +95,7 @@ const statusIcons = {
 ---
 
 <AppLayout title={`${vehicle.brand} ${vehicle.model}`}>
-  <div class="space-y-lg">
+  <div class="space-y-xl">
     {/* Header */}
     <div class="flex items-start justify-between">
       <div>
@@ -121,84 +129,187 @@ const statusIcons = {
       </div>
     </div>
 
-    {/* Vehicle info */}
-    <div class="grid gap-md md:grid-cols-2">
-      <Card>
-        <h2 class="text-headline-sm text-on-surface mb-md">Información general</h2>
-        <dl class="space-y-sm">
-          {vehicle.vin && (
-            <div class="flex justify-between items-center py-xs border-b border-outline-variant">
-              <dt class="text-label-md text-on-surface-variant uppercase">VIN</dt>
-              <dd class="font-mono text-data-mono text-on-surface">{vehicle.vin}</dd>
-            </div>
-          )}
-          {vehicle.year && (
-            <div class="flex justify-between items-center py-xs border-b border-outline-variant">
-              <dt class="text-label-md text-on-surface-variant uppercase">Año</dt>
-              <dd class="text-body-md text-on-surface font-medium">{vehicle.year}</dd>
-            </div>
-          )}
-          {vehicle.color && (
-            <div class="flex justify-between items-center py-xs border-b border-outline-variant">
-              <dt class="text-label-md text-on-surface-variant uppercase">Color</dt>
-              <dd class="text-body-md text-on-surface font-medium">{vehicle.color}</dd>
-            </div>
-          )}
-          {vehicle.fuelType && (
-            <div class="flex justify-between items-center py-xs border-b border-outline-variant">
-              <dt class="text-label-md text-on-surface-variant uppercase">Combustible</dt>
-              <dd class="text-body-md text-on-surface font-medium capitalize">{vehicle.fuelType}</dd>
-            </div>
-          )}
-          {vehicle.km !== null && (
-            <div class="flex justify-between items-center py-xs">
-              <dt class="text-label-md text-on-surface-variant uppercase">Kilometraje</dt>
-              <dd class="font-mono text-data-mono text-on-surface">{vehicle.km.toLocaleString()} km</dd>
-            </div>
-          )}
-        </dl>
-      </Card>
-
-      <Card>
-        <h2 class="text-headline-sm text-on-surface mb-md">Documentos</h2>
-        {vehicleDocuments.length === 0 ? (
-          <p class="text-body-md text-on-surface-variant">No hay documentos registrados</p>
-        ) : (
-          <div class="space-y-sm">
-            {vehicleDocuments.map((doc) => {
-              const status = getDocumentStatus(doc.expiresAt, doc.alertDaysBefore ?? 30);
-              return (
-                <div class="flex items-center justify-between py-xs border-b border-outline-variant last:border-0">
-                  <div>
-                    <p class="text-body-md text-on-surface font-medium">
-                      {documentTypes[doc.type] || doc.type}
-                    </p>
-                    {doc.expiresAt && (
-                      <p class="text-label-md text-on-surface-variant">
-                        Vence: {new Date(doc.expiresAt).toLocaleDateString('es-ES')}
-                      </p>
-                    )}
-                  </div>
-                  <Badge variant={statusVariants[status]} icon={statusIcons[status]}>
-                    {statusLabels[status]}
-                  </Badge>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <div class="mt-md">
-          <Button href={`/documents?vehicle=${id}`} variant="ghost" size="sm">
-            Gestionar documentos →
-          </Button>
+    {/* Section 1: Identification */}
+    <section class="bg-surface-container rounded-xl p-md lg:p-xl border border-outline-variant">
+      <div class="flex items-center gap-2 mb-md">
+        <span class="material-symbols-outlined text-primary">fingerprint</span>
+        <h2 class="font-headline-sm text-headline-sm text-on-surface">
+          Identificación del Vehículo
+        </h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+        <div>
+          <p class="font-label-md text-label-md text-on-surface-variant mb-base">Matrícula</p>
+          <p class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm font-data-mono text-on-surface uppercase">
+            {vehicle.plate}
+          </p>
         </div>
-      </Card>
+        <div class="md:col-span-2">
+          <p class="font-label-md text-label-md text-on-surface-variant mb-base">Número de Bastidor (VIN)</p>
+          <p class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm font-data-mono text-on-surface">
+            {vehicle.vin || '—'}
+          </p>
+        </div>
+        <div>
+          <p class="font-label-md text-label-md text-on-surface-variant mb-base">Marca</p>
+          <p class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-on-surface">
+            {vehicle.brand}
+          </p>
+        </div>
+        <div>
+          <p class="font-label-md text-label-md text-on-surface-variant mb-base">Modelo</p>
+          <p class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-on-surface">
+            {vehicle.model}
+          </p>
+        </div>
+        <div>
+          <p class="font-label-md text-label-md text-on-surface-variant mb-base">Año</p>
+          <p class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-on-surface">
+            {vehicle.year || '—'}
+          </p>
+        </div>
+        <div>
+          <p class="font-label-md text-label-md text-on-surface-variant mb-base">Color</p>
+          <p class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-on-surface">
+            {vehicle.color || '—'}
+          </p>
+        </div>
+        <div>
+          <p class="font-label-md text-label-md text-on-surface-variant mb-base">Tipo de Combustible</p>
+          <div class="flex gap-2">
+            {['gasoline', 'diesel', 'electric', 'hybrid', 'lpg', 'cng'].map((fuel) => (
+              <span
+                class={`flex-1 py-sm rounded-lg font-label-md text-label-md border px-2.5 text-center ${
+                  vehicle.fuelType === fuel
+                    ? 'bg-primary text-on-primary border-primary'
+                    : 'bg-secondary-container text-on-secondary-container border-primary/20 opacity-40'
+                }`}
+              >
+                {fuelTypeLabels[fuel]}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {/* Section 2 & 3: Mileage & Alerts */}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-xl">
+      {/* Mileage */}
+      <section class="bg-surface-container rounded-xl p-md lg:p-xl border border-outline-variant">
+        <div class="flex items-center gap-2 mb-md">
+          <span class="material-symbols-outlined text-primary">speed</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">
+            Kilometraje
+          </h2>
+        </div>
+        <div class="space-y-md">
+          <div>
+            <p class="font-label-md text-label-md text-on-surface-variant mb-base">Odómetro Actual (km)</p>
+            <div class="relative">
+              <p class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg pl-md pr-12 py-sm font-data-mono text-on-surface text-right">
+                {vehicle.km !== null ? vehicle.km.toLocaleString() : '0'}
+              </p>
+              <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">KM</span>
+            </div>
+          </div>
+          <div>
+            <p class="font-label-md text-label-md text-on-surface-variant mb-base">Proyección Próxima Revisión</p>
+            <div class="relative">
+              <p class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-md pr-12 py-sm font-data-mono text-on-surface-variant text-right">
+                {vehicle.nextRevisionKm?.toLocaleString() || '15.000'}
+              </p>
+              <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs">KM</span>
+            </div>
+          </div>
+          <div>
+            <p class="font-label-md text-label-md text-on-surface-variant mb-base">Intervalo entre Revisiones</p>
+            <div class="bg-surface-container-low p-md rounded-lg border border-outline-variant/30 flex items-center gap-3">
+              <span class="material-symbols-outlined text-secondary">trending_up</span>
+              <div>
+                <p class="text-xs text-on-surface-variant">Intervalo configurado</p>
+                <p class="font-label-md text-label-md">
+                  Cada {(vehicle.revisionIntervalKm || 15000).toLocaleString()} km
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Alerts */}
+      <section class="bg-surface-container rounded-xl p-md lg:p-xl border border-outline-variant">
+        <div class="flex items-center gap-2 mb-md">
+          <span class="material-symbols-outlined text-primary">notifications_active</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">
+            Alertas de Mantenimiento
+          </h2>
+        </div>
+        <div class="space-y-md">
+          <div class="flex items-center justify-between p-sm border-b border-outline-variant pb-md">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-tertiary-container/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-tertiary">calendar_today</span>
+              </div>
+              <div>
+                <p class="font-label-md text-label-md text-on-surface">Próxima ITV</p>
+                <p class="text-[10px] text-on-surface-variant uppercase">Fecha de vencimiento</p>
+              </div>
+            </div>
+            <span class="text-sm text-on-surface font-data-mono">
+              {vehicle.nextItvDate
+                ? new Date(vehicle.nextItvDate).toLocaleDateString('es-ES')
+                : '—'}
+            </span>
+          </div>
+          <div class="flex items-center justify-between p-sm border-b border-outline-variant pb-md">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-primary">verified_user</span>
+              </div>
+              <div>
+                <p class="font-label-md text-label-md text-on-surface">Seguro</p>
+                <p class="text-[10px] text-on-surface-variant uppercase">Vencimiento Póliza</p>
+              </div>
+            </div>
+            <span class="text-sm text-on-surface font-data-mono">
+              {vehicle.insuranceExpiry
+                ? new Date(vehicle.insuranceExpiry).toLocaleDateString('es-ES')
+                : '—'}
+            </span>
+          </div>
+          <div class="flex items-center justify-between p-sm">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-error-container/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-error">oil_barrel</span>
+              </div>
+              <div>
+                <p class="font-label-md text-label-md text-on-surface">Cambio de Aceite</p>
+                <p class="text-[10px] text-on-surface-variant uppercase">Recordatorio preventivo</p>
+              </div>
+            </div>
+            <span class={`text-sm font-label-md ${vehicle.oilChangeReminder !== false ? 'text-success' : 'text-on-surface-variant'}`}>
+              {vehicle.oilChangeReminder !== false ? 'Activado' : 'Desactivado'}
+            </span>
+          </div>
+        </div>
+      </section>
     </div>
 
-    {/* Photos */}
-    {vehiclePhotos.length > 0 && (
-      <Card>
-        <h2 class="text-headline-sm text-on-surface mb-md">Fotos</h2>
+    {/* Section 4: Photos */}
+    <section class="bg-surface-container rounded-xl p-md lg:p-xl border border-outline-variant">
+      <div class="flex items-center gap-2 mb-md">
+        <span class="material-symbols-outlined text-primary">add_a_photo</span>
+        <h2 class="font-headline-sm text-headline-sm text-on-surface">
+          Galería
+        </h2>
+      </div>
+      {vehiclePhotos.length === 0 ? (
+        <div class="aspect-square max-w-[200px] rounded-xl border-2 border-dashed border-outline-variant flex flex-col items-center justify-center gap-2">
+          <span class="material-symbols-outlined text-on-surface-variant">photo_camera</span>
+          <p class="text-[10px] font-bold text-on-surface-variant uppercase">Sin fotos</p>
+        </div>
+      ) : (
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-md">
           {vehiclePhotos.map((photo, index) => (
             <div class="relative group aspect-square rounded-xl overflow-hidden border border-outline-variant">
@@ -206,13 +317,59 @@ const statusIcons = {
             </div>
           ))}
         </div>
-      </Card>
-    )}
+      )}
+    </section>
 
-    {/* Recent maintenance */}
-    <Card>
+    {/* Section 5: Documents */}
+    <section class="bg-surface-container rounded-xl p-md lg:p-xl border border-outline-variant">
       <div class="flex items-center justify-between mb-md">
-        <h2 class="text-headline-sm text-on-surface">Últimos mantenimientos</h2>
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">description</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">
+            Documentos
+          </h2>
+        </div>
+        <Button href={`/documents?vehicle=${id}`} variant="ghost" size="sm">
+          Gestionar documentos →
+        </Button>
+      </div>
+      {vehicleDocuments.length === 0 ? (
+        <p class="text-body-md text-on-surface-variant">No hay documentos registrados</p>
+      ) : (
+        <div class="space-y-sm">
+          {vehicleDocuments.map((doc) => {
+            const status = getDocumentStatus(doc.expiresAt, doc.alertDaysBefore ?? 30);
+            return (
+              <div class="flex items-center justify-between py-xs border-b border-outline-variant last:border-0">
+                <div>
+                  <p class="text-body-md text-on-surface font-medium">
+                    {documentTypes[doc.type] || doc.type}
+                  </p>
+                  {doc.expiresAt && (
+                    <p class="text-label-md text-on-surface-variant">
+                      Vence: {new Date(doc.expiresAt).toLocaleDateString('es-ES')}
+                    </p>
+                  )}
+                </div>
+                <Badge variant={statusVariants[status]} icon={statusIcons[status]}>
+                  {statusLabels[status]}
+                </Badge>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+
+    {/* Section 6: Recent maintenance */}
+    <section class="bg-surface-container rounded-xl p-md lg:p-xl border border-outline-variant">
+      <div class="flex items-center justify-between mb-md">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">build</span>
+          <h2 class="font-headline-sm text-headline-sm text-on-surface">
+            Últimos mantenimientos
+          </h2>
+        </div>
         <Button href={`/maintenance/${id}`} variant="ghost" size="sm">
           Ver todos →
         </Button>
@@ -252,10 +409,10 @@ const statusIcons = {
           </table>
         </div>
       )}
-    </Card>
+    </section>
 
     {/* Quick actions */}
-    <div class="flex items-center gap-md">
+    <div class="flex items-center gap-md pb-xl">
       <Button href={`/maintenance/${id}?new=true`} variant="secondary">
         + Añadir mantenimiento
       </Button>
