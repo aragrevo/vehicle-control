@@ -7,9 +7,13 @@ interface Props {
   year: number | null;
   km: number | null;
   status: string | null;
+  photos?: string | null;
 }
 
-const { id, plate, brand, model, year, km, status } = Astro.props;
+const { id, plate, brand, model, year, km, status, photos } = Astro.props;
+
+const photosList: string[] = photos ? JSON.parse(photos) : [];
+const mainPhoto = photosList.length > 0 ? photosList[0] : null;
 
 const statusConfig = {
   active: {
@@ -36,8 +40,8 @@ const currentStatus =
   >
     <img
       class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500"
-      data-alt="A high-performance silver electric sedan parked in a sleek, minimalist concrete hangar with cool blue atmospheric lighting. The image has a professional automotive photography style, clean reflections, and a cinematic, corporate dark-mode feel."
-      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBk84cQe-WFkDrjwsspjfJXyJO-lJUguOQCfJLdcdu_Q3BcKlyB1kJVo8POGtW_s9wLGXMNPqmEPaeYlcVoLM0Os8q_UnJBKMVpe_ulwoSRPkMXlNS-4WIAIG5OfcemW6dOLFZXYwMOi5we9A9i8OHC3SOr8GhdKD8yAov9etscZhoKXP0sy8rKw1OZOA1z2gpkfk2iHmlk32Q4vyH9bFO4DwfubNCj17muEW5O-UAnYtbvUSwj5JWStOyBb89L_2z6XRn_TgZ7_IMT"
+      alt={`${brand} ${model}`}
+      src={mainPhoto || "https://lh3.googleusercontent.com/aida-public/AB6AXuBk84cQe-WFkDrjwsspjfJXyJO-lJUguOQCfJLdcdu_Q3BcKlyB1kJVo8POGtW_s9wLGXMNPqmEPaeYlcVoLM0Os8q_UnJBKMVpe_ulwoSRPkMXlNS-4WIAIG5OfcemW6dOLFZXYwMOi5we9A9i8OHC3SOr8GhdKD8yAov9etscZhoKXP0sy8rKw1OZOA1z2gpkfk2iHmlk32Q4vyH9bFO4DwfubNCj17muEW5O-UAnYtbvUSwj5JWStOyBb89L_2z6XRn_TgZ7_IMT"}
     />
     <div class="absolute top-md right-md">
       <span
