@@ -12,7 +12,6 @@ if (!Astro.locals.user) {
 }
 
 const vehicleFilter = Astro.url.searchParams.get('vehicle');
-const showForm = Astro.url.searchParams.get('new') === 'true';
 
 if (Astro.request.method === 'POST') {
   const data = await parseFuelFormData(await Astro.request.formData());
@@ -29,7 +28,7 @@ const [userVehicles, userFuelLogs] = await Promise.all([
 
 const vehicleMap = new Map(userVehicles.map((v) => [v.id, { name: `${v.brand} ${v.model}`, plate: v.plate, brand: v.brand }]));
 const stats = calculateFuelStats(userFuelLogs);
-const ctaHref = vehicleFilter ? `/fuel?vehicle=${vehicleFilter}&new=true` : '/fuel?new=true';
+const ctaHref = '/fuel/new';
 ---
 
 <AppLayout title="Combustible">
