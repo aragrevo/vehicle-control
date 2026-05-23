@@ -32,6 +32,7 @@ export const vehicles = sqliteTable('vehicles', {
   oilChangeReminder: integer('oil_change_reminder', { mode: 'boolean' }).default(true),
   nextRevisionKm: integer('next_revision_km').default(15000),
   revisionIntervalKm: integer('revision_interval_km').default(15000),
+  photos: text('photos'),
 });
 
 export const maintenances = sqliteTable('maintenances', {
