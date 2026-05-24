@@ -1,0 +1,298 @@
+---
+import AppLayout from "@/layouts/AppLayout.astro";
+import {
+  getUserVehicles,
+  MAINTENANCE_TYPE_LABELS,
+} from "@/lib/vehicle-service";
+import {
+  createMaintenance,
+  parseMaintenanceFormData,
+} from "@/lib/maintenance-service";
+
+if (!Astro.locals.user) {
+  return Astro.redirect("/login");
+}
+
+const userVehicles = await getUserVehicles(Astro.locals.user.id);
+const today = new Date().toISOString().split("T")[0];
+
+if (Astro.request.method === "POST") {
+  const data = await parseMaintenanceFormData(await Astro.request.formData());
+  if (data.type && data.vehicleId) {
+    await createMaintenance({ ...data, vehicleId: data.vehicleId });
+    return Astro.redirect("/maintenance");
+  }
+}
+---
+
+<AppLayout title="Registrar Mantenimiento">
+  <div class="space-y-lg">
+    <div class="mb-xl">
+      <nav class="flex items-center gap-sm text-on-surface-variant mb-xs">
+        <a
+          href="/maintenance"
+          class="font-label-md text-label-md hover:text-primary cursor-pointer"
+          >Mantenimiento</a
+        >
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span class="font-label-md text-label-md text-primary"
+          >Registrar Nuevo</span
+        >
+      </nav>
+    </div>
+
+    <form method="POST" class="space-y-lg">
+      <!-- Vehicle Selector -->
+      <div
+        class="bg-surface-container-high rounded-xl p-lg border border-outline-variant"
+      >
+        <div class="flex items-center gap-sm mb-lg">
+          <span class="material-symbols-outlined text-primary"
+            >directions_car</span
+          >
+          <h2 class="font-headline-sm text-headline-sm">
+            Seleccionar Vehículo
+          </h2>
+        </div>
+        {
+          userVehicles.length === 0 ? (
+            <div class="text-center py-lg">
+              <p class="text-on-surface-variant mb-md">
+                No tienes vehículos registrados
+              </p>
+              <a
+                href="/vehicles/new"
+                class="inline-flex items-center gap-2 bg-primary text-on-primary px-lg py-3 rounded-xl font-label-md shadow-lg hover:opacity-90 transition-all"
+              >
+                <span class="material-symbols-outlined">add</span>
+                Añadir Vehículo
+              </a>
+            </div>
+          ) : (
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
+              {userVehicles.map((vehicle, index) => (
+                <label
+                  class={`vehicle-card group relative flex flex-col items-center p-md border rounded-xl cursor-pointer transition-all ${index === 0 ? "bg-primary/10 border-primary" : "bg-surface-container border-outline-variant hover:bg-surface-variant"}`}
+                  data-vehicle-id={vehicle.id}
+                >
+                  <input
+                    type="radio"
+                    name="vehicleId"
+                    value={vehicle.id}
+                    class="hidden"
+                    data-vehicle-km={vehicle.km}
+                    checked={index === 0}
+                  />
+                  <div class="w-full h-24 mb-sm rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[48px] text-secondary opacity-40 group-hover:scale-110 transition-transform">
+                      local_shipping
+                    </span>
+                  </div>
+                  <span class="font-label-md text-label-md text-primary">
+                    {vehicle.brand} {vehicle.model}
+                  </span>
+                  <span class="font-data-mono text-body-md text-on-surface-variant">
+                    {vehicle.plate}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )
+        }
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+        <div
+          class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
+        >
+          <div class="space-y-xs">
+            <label
+              class="font-label-md text-label-md text-on-surface-variant px-xs"
+              >Odómetro Actual (KM)</label
+            >
+            <div class="relative">
+              <input
+                id="km-input"
+                name="km"
+                class="w-full font-data-mono bg-surface-container-lowest border border-outline-variant rounded-lg py-md px-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all text-right pr-12"
+                placeholder="0"
+                type="number"
+                value={userVehicles[0]?.km || ""}
+                min="0"
+              />
+              <span
+                class="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md"
+                >KM</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
+        >
+          <div class="space-y-xs">
+            <label
+              class="font-label-md text-label-md text-on-surface-variant px-xs"
+              >Fecha del Servicio</label
+            >
+            <div class="relative group">
+              <span
+                class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary"
+              >
+                calendar_today
+              </span>
+              <input
+                name="date"
+                class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-md pl-11 pr-md focus:outline-none focus:border-primary text-body-md [color-scheme:dark]"
+                type="date"
+                value={today}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Maintenance Details -->
+      <section
+        class="bg-surface-container rounded-xl p-lg border border-outline-variant/30"
+      >
+        <div
+          class="flex items-center gap-sm mb-lg border-b border-outline-variant pb-sm"
+        >
+          <span class="material-symbols-outlined text-primary"
+            >build_circle</span
+          >
+          <h2 class="font-headline-sm text-headline-sm">
+            Detalles del Servicio
+          </h2>
+        </div>
+        <div class="space-y-lg">
+          <div class="space-y-xs">
+            <label class="text-label-md text-on-surface-variant"
+              >Tipo de Servicio</label
+            >
+            <div class="flex flex-wrap gap-sm">
+              {
+                Object.entries(MAINTENANCE_TYPE_LABELS).map(
+                  ([key, label], index) => (
+                    <label class="cursor-pointer" key={key}>
+                      <input
+                        class="hidden peer"
+                        name="type"
+                        type="radio"
+                        value={key}
+                        checked={index === 0}
+                      />
+                      <div class="px-md py-sm bg-surface-container-low border border-outline-variant rounded-full peer-checked:bg-primary-container peer-checked:text-on-primary-container peer-checked:border-primary transition-all text-on-surface-variant">
+                        {label}
+                      </div>
+                    </label>
+                  ),
+                )
+              }
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+            <div class="space-y-xs">
+              <label class="text-label-md text-on-surface-variant"
+                >Coste Total</label
+              >
+              <div class="relative">
+                <input
+                  name="cost"
+                  class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-md text-on-surface font-data-mono form-input-focus pr-xl"
+                  placeholder="0.00"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                />
+                <span
+                  class="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant"
+                  >€</span
+                >
+              </div>
+            </div>
+          </div>
+          <div class="space-y-xs">
+            <label class="text-label-md text-on-surface-variant"
+              >Descripción del Trabajo</label
+            >
+            <textarea
+              name="description"
+              class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-md text-on-surface form-input-focus resize-none"
+              placeholder="Describa brevemente las intervenciones realizadas..."
+              rows="4"></textarea>
+          </div>
+
+          <div class="flex items-center gap-sm py-sm">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="updateNextRevision"
+                class="sr-only peer"
+                checked
+              />
+              <div
+                class="w-11 h-6 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"
+              >
+              </div>
+            </label>
+            <span class="text-body-md text-on-surface"
+              >Actualizar próxima revisión</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <div
+        class="flex flex-col-reverse md:flex-row items-center justify-end gap-md pt-lg"
+      >
+        <a
+          href="/maintenance"
+          class="w-full md:w-auto px-xl py-md rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-[0.98]"
+        >
+          Cancelar
+        </a>
+        <button
+          type="submit"
+          class="w-full md:w-auto px-xl py-md bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98] flex items-center justify-center gap-sm"
+        >
+          <span class="material-symbols-outlined text-[18px]">save</span>
+          Guardar Servicio
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const vehicleCards = document.querySelectorAll(".vehicle-card");
+      const kmInput = document.getElementById("km-input") as HTMLInputElement;
+
+      vehicleCards.forEach((card) => {
+        const radio = card.querySelector(
+          'input[type="radio"]',
+        ) as HTMLInputElement;
+
+        card.addEventListener("click", () => {
+          vehicleCards.forEach((c) => {
+            c.classList.remove("bg-primary/10", "border-primary");
+            c.classList.add("bg-surface-container", "border-outline-variant");
+          });
+          card.classList.remove(
+            "bg-surface-container",
+            "border-outline-variant",
+          );
+          card.classList.add("bg-primary/10", "border-primary");
+
+          const km = radio.dataset.vehicleKm;
+          if (km && kmInput) {
+            kmInput.value = km;
+          }
+        });
+      });
+    });
+  </script>
+</AppLayout>

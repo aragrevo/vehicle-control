@@ -50,7 +50,15 @@ export async function createFuelLog(data: {
   });
 
   if (data.km) {
-    await db.update(vehicles).set({ km: data.km }).where(eq(vehicles.id, data.vehicleId));
+    const [currentVehicle] = await db
+      .select({ km: vehicles.km })
+      .from(vehicles)
+      .where(eq(vehicles.id, data.vehicleId))
+      .limit(1);
+
+    if (currentVehicle && (currentVehicle.km === null || data.km > currentVehicle.km)) {
+      await db.update(vehicles).set({ km: data.km }).where(eq(vehicles.id, data.vehicleId));
+    }
   }
 
   return id;
