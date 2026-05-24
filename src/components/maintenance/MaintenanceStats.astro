@@ -1,0 +1,31 @@
+---
+interface Props {
+  totalRecords: number;
+  totalCost: number;
+  thisMonth: number;
+  overdueCount: number;
+}
+
+const { totalRecords, totalCost, thisMonth, overdueCount } = Astro.props;
+
+const cards = [
+  { label: 'Total Registros', value: totalRecords.toString(), icon: 'event', color: 'text-primary', bg: 'bg-primary/10' },
+  { label: 'Gasto Total', value: `${totalCost.toFixed(2)} €`, icon: 'payments', color: 'text-tertiary', bg: 'bg-tertiary/10' },
+  { label: 'Este Mes', value: thisMonth.toString(), icon: 'check_circle', color: 'text-success', bg: 'bg-success/10' },
+  { label: 'Revisión Pendiente', value: overdueCount.toString(), icon: 'warning', color: overdueCount > 0 ? 'text-error' : 'text-on-surface-variant', bg: overdueCount > 0 ? 'bg-error/10' : 'bg-surface-container-highest/30' },
+];
+---
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-md">
+  {cards.map((card) => (
+    <div class="bg-surface-container border border-outline-variant rounded-xl p-md flex items-start justify-between hover:border-primary/50 transition-colors">
+      <div>
+        <p class="text-label-md text-on-surface-variant uppercase tracking-widest mb-sm">{card.label}</p>
+        <p class="text-headline-lg font-headline-lg text-on-surface font-data-mono">{card.value}</p>
+      </div>
+      <div class={`w-10 h-10 rounded-lg ${card.bg} flex items-center justify-center`}>
+        <span class={`material-symbols-outlined ${card.color}`}>{card.icon}</span>
+      </div>
+    </div>
+  ))}
+</div>

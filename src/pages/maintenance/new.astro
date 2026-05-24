@@ -15,6 +15,7 @@ if (!Astro.locals.user) {
 
 const userVehicles = await getUserVehicles(Astro.locals.user.id);
 const today = new Date().toISOString().split("T")[0];
+const selectedVehicleId = Astro.url.searchParams.get("vehicleId");
 
 if (Astro.request.method === "POST") {
   const data = await parseMaintenanceFormData(await Astro.request.formData());
@@ -70,32 +71,38 @@ if (Astro.request.method === "POST") {
             </div>
           ) : (
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
-              {userVehicles.map((vehicle, index) => (
-                <label
-                  class={`vehicle-card group relative flex flex-col items-center p-md border rounded-xl cursor-pointer transition-all ${index === 0 ? "bg-primary/10 border-primary" : "bg-surface-container border-outline-variant hover:bg-surface-variant"}`}
-                  data-vehicle-id={vehicle.id}
-                >
-                  <input
-                    type="radio"
-                    name="vehicleId"
-                    value={vehicle.id}
-                    class="hidden"
-                    data-vehicle-km={vehicle.km}
-                    checked={index === 0}
-                  />
-                  <div class="w-full h-24 mb-sm rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[48px] text-secondary opacity-40 group-hover:scale-110 transition-transform">
-                      local_shipping
+              {userVehicles.map((vehicle, index) => {
+                const isSelected = selectedVehicleId
+                  ? vehicle.id === selectedVehicleId
+                  : index === 0;
+                return (
+                  <label
+                    class={`vehicle-card group relative flex flex-col items-center p-md border rounded-xl cursor-pointer transition-all ${isSelected ? "bg-primary/10 border-primary" : "bg-surface-container border-outline-variant hover:bg-surface-variant"}`}
+                    data-vehicle-id={vehicle.id}
+                    key={vehicle.id}
+                  >
+                    <input
+                      type="radio"
+                      name="vehicleId"
+                      value={vehicle.id}
+                      class="hidden"
+                      data-vehicle-km={vehicle.km}
+                      checked={isSelected}
+                    />
+                    <div class="w-full h-24 mb-sm rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center">
+                      <span class="material-symbols-outlined text-[48px] text-secondary opacity-40 group-hover:scale-110 transition-transform">
+                        local_shipping
+                      </span>
+                    </div>
+                    <span class="font-label-md text-label-md text-primary">
+                      {vehicle.brand} {vehicle.model}
                     </span>
-                  </div>
-                  <span class="font-label-md text-label-md text-primary">
-                    {vehicle.brand} {vehicle.model}
-                  </span>
-                  <span class="font-data-mono text-body-md text-on-surface-variant">
-                    {vehicle.plate}
-                  </span>
-                </label>
-              ))}
+                    <span class="font-data-mono text-body-md text-on-surface-variant">
+                      {vehicle.plate}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           )
         }
@@ -117,7 +124,10 @@ if (Astro.request.method === "POST") {
                 class="w-full font-data-mono bg-surface-container-lowest border border-outline-variant rounded-lg py-md px-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all text-right pr-12"
                 placeholder="0"
                 type="number"
-                value={userVehicles[0]?.km || ""}
+                value={selectedVehicleId
+                  ? userVehicles.find((v) => v.id === selectedVehicleId)?.km ||
+                    ""
+                  : userVehicles[0]?.km || ""}
                 min="0"
               />
               <span

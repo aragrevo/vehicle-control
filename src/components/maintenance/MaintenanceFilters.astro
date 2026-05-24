@@ -1,0 +1,63 @@
+---
+interface Props {
+  types: Record<string, string>;
+}
+
+const { types } = Astro.props;
+---
+
+<div class="flex flex-wrap items-center gap-md bg-surface-container-high p-4 rounded-xl border border-outline-variant">
+  <div class="flex items-center gap-2">
+    <span class="material-symbols-outlined text-on-surface-variant">filter_list</span>
+    <span class="text-label-md font-bold text-on-surface-variant uppercase">Filtros</span>
+  </div>
+  <div class="h-6 w-px bg-outline-variant"></div>
+  <div class="relative flex-1 min-w-[200px]">
+    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+    <input
+      class="bg-surface-container border border-outline-variant rounded-lg pl-10 pr-4 py-2 text-body-md text-on-surface w-full focus:outline-none focus:border-primary"
+      placeholder="Buscar por tipo o descripción..."
+      type="text"
+      id="maintenanceSearch"
+    />
+  </div>
+  <div class="relative min-w-[180px]">
+    <select
+      class="appearance-none bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface w-full focus:outline-none focus:border-primary cursor-pointer"
+      id="typeFilter"
+    >
+      <option value="">Todos los tipos</option>
+      {Object.entries(types).map(([value, label]) => (
+        <option value={value}>{label}</option>
+      ))}
+    </select>
+    <span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant">expand_more</span>
+  </div>
+  <button class="flex items-center gap-2 px-4 py-2 text-label-md font-bold text-on-surface-variant border border-outline-variant rounded-lg hover:bg-surface-bright/10 transition-colors active:scale-95" id="exportBtn">
+    <span class="material-symbols-outlined text-lg">download</span>
+    Exportar
+  </button>
+</div>
+
+<script>
+  const searchInput = document.getElementById('maintenanceSearch') as HTMLInputElement;
+  const typeFilter = document.getElementById('typeFilter') as HTMLSelectElement;
+  const exportBtn = document.getElementById('exportBtn');
+
+  function filterRows() {
+    const search = searchInput?.value.toLowerCase() || '';
+    const type = typeFilter?.value || '';
+    document.querySelectorAll('[data-maintenance-row]').forEach((row) => {
+      const el = row as HTMLElement;
+      const rowType = el.dataset.maintenanceType || '';
+      const rowText = el.textContent?.toLowerCase() || '';
+      const matchType = !type || rowType === type;
+      const matchSearch = !search || rowText.includes(search);
+      el.style.display = matchType && matchSearch ? '' : 'none';
+    });
+  }
+
+  searchInput?.addEventListener('input', filterRows);
+  typeFilter?.addEventListener('change', filterRows);
+  exportBtn?.addEventListener('click', () => window.print());
+</script>
