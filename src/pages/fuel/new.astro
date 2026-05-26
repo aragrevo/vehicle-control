@@ -1,233 +1,349 @@
 ---
 import AppLayout from "@/layouts/AppLayout.astro";
+import { getUserVehicles } from "@/lib/vehicle-service";
+import {
+  createFuelLog,
+  parseFuelFormData,
+} from "@/lib/fuel-service";
+
+if (!Astro.locals.user) {
+  return Astro.redirect("/login");
+}
+
+const userVehicles = await getUserVehicles(Astro.locals.user.id);
+const today = new Date().toISOString().split("T")[0];
+const selectedVehicleId = Astro.url.searchParams.get("vehicleId");
+
+if (Astro.request.method === "POST") {
+  const data = await parseFuelFormData(await Astro.request.formData());
+  if (data.vehicleId && data.liters && data.pricePerLiter && data.total) {
+    await createFuelLog(data);
+    return Astro.redirect("/fuel");
+  }
+}
 ---
 
 <AppLayout title="Registrar Combustible">
-  <!-- Header Section -->
-  <div class="mb-xl">
-    <nav class="flex items-center gap-sm text-on-surface-variant mb-xs">
-      <a
-        href="/fuel"
-        class="font-label-md text-label-md hover:text-primary cursor-pointer"
-        >Combustible</a
-      >
-      <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-      <span class="font-label-md text-label-md text-primary"
-        >Registrar Repostaje</span
-      >
-    </nav>
-  </div>
-  <form class="space-y-lg">
-    <!-- Vehicle Selector -->
-    <div
-      class="bg-surface-container-high rounded-xl p-lg border border-outline-variant"
-    >
-      <div class="flex items-center gap-sm mb-lg">
-        <span class="material-symbols-outlined text-primary"
-          >directions_car</span
+  <div class="space-y-lg">
+    <div class="mb-xl">
+      <nav class="flex items-center gap-sm text-on-surface-variant mb-xs">
+        <a
+          href="/fuel"
+          class="font-label-md text-label-md hover:text-primary cursor-pointer"
+          >Combustible</a
         >
-        <h2 class="font-headline-sm text-headline-sm">Seleccionar Vehículo</h2>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
-        <!-- Vehicle Cards -->
-        <div
-          class="vehicle-card group relative flex flex-col items-center p-md border border-outline-variant rounded-xl cursor-pointer hover:bg-surface-variant transition-all"
-          onclick="selectVehicle(this)"
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span class="font-label-md text-label-md text-primary"
+          >Registrar Repostaje</span
         >
-          <div
-            class="w-full h-24 mb-sm rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center"
-          >
-            <span
-              class="material-symbols-outlined text-[48px] text-secondary opacity-40 group-hover:scale-110 transition-transform"
-              >local_shipping</span
-            >
-          </div>
-          <span class="font-label-md text-label-md text-primary"
-            >Mercedes Actros</span
-          >
-          <span class="font-data-mono text-body-md text-on-surface-variant"
-            >1234-KBC</span
-          >
-        </div>
-        <div
-          class="vehicle-card group relative flex flex-col items-center p-md border border-outline-variant rounded-xl cursor-pointer hover:bg-surface-variant transition-all"
-          onclick="selectVehicle(this)"
-        >
-          <div
-            class="w-full h-24 mb-sm rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center"
-          >
-            <span
-              class="material-symbols-outlined text-[48px] text-secondary opacity-40 group-hover:scale-110 transition-transform"
-              >local_shipping</span
-            >
-          </div>
-          <span class="font-label-md text-label-md text-primary"
-            >Scania R450</span
-          >
-          <span class="font-data-mono text-body-md text-on-surface-variant"
-            >5678-LMN</span
-          >
-        </div>
-        <div
-          class="vehicle-card group relative flex flex-col items-center p-md border border-outline-variant rounded-xl cursor-pointer hover:bg-surface-variant transition-all"
-          onclick="selectVehicle(this)"
-        >
-          <div
-            class="w-full h-24 mb-sm rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center"
-          >
-            <span
-              class="material-symbols-outlined text-[48px] text-secondary opacity-40 group-hover:scale-110 transition-transform"
-              >local_shipping</span
-            >
-          </div>
-          <span class="font-label-md text-label-md text-primary"
-            >Volvo FH16</span
-          >
-          <span class="font-data-mono text-body-md text-on-surface-variant"
-            >9012-PQR</span
-          >
-        </div>
-      </div>
+      </nav>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+    <form id="fuelForm" method="POST" class="space-y-lg relative">
+      <!-- Loading Overlay -->
       <div
-        class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
+        id="formLoader"
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center"
       >
-        <div class="space-y-xs">
-          <label
-            class="font-label-md text-label-md text-on-surface-variant px-xs"
-            >Odómetro Actual (KM)</label
-          >
-          <div class="relative">
-            <input
-              class="w-full font-data-mono bg-surface-container-lowest border border-outline-variant rounded-lg py-md px-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all text-right pr-12"
-              placeholder="0"
-              type="number"
-            />
-            <span
-              class="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md"
-              >KM</span
-            >
+        <div class="bg-surface-container rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+          <div class="relative w-16 h-16">
+            <div class="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <div class="text-center">
+            <p class="font-headline-sm text-headline-sm text-on-surface">Guardando repostaje</p>
+            <p class="text-body-md text-on-surface-variant mt-1">Registrando datos...</p>
           </div>
         </div>
       </div>
 
+      <!-- Vehicle Selector -->
       <div
-        class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
+        class="bg-surface-container-high rounded-xl p-lg border border-outline-variant"
       >
-        <div class="space-y-xs">
-          <label
-            class="font-label-md text-label-md text-on-surface-variant px-xs"
-            >Fecha del Repostaje</label
+        <div class="flex items-center gap-sm mb-lg">
+          <span class="material-symbols-outlined text-primary"
+            >directions_car</span
           >
-          <div class="relative group">
-            <span
-              class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary"
-              >calendar_today</span
+          <h2 class="font-headline-sm text-headline-sm">
+            Seleccionar Vehículo
+          </h2>
+        </div>
+        {
+          userVehicles.length === 0 ? (
+            <div class="text-center py-lg">
+              <p class="text-on-surface-variant mb-md">
+                No tienes vehículos registrados
+              </p>
+              <a
+                href="/vehicles/new"
+                class="inline-flex items-center gap-2 bg-primary text-on-primary px-lg py-3 rounded-xl font-label-md shadow-lg hover:opacity-90 transition-all"
+              >
+                <span class="material-symbols-outlined">add</span>
+                Añadir Vehículo
+              </a>
+            </div>
+          ) : (
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
+              {userVehicles.map((vehicle, index) => {
+                const isSelected = selectedVehicleId
+                  ? vehicle.id === selectedVehicleId
+                  : index === 0;
+                return (
+                  <label
+                    class={`vehicle-card group relative flex flex-col items-center p-md border rounded-xl cursor-pointer transition-all ${isSelected ? "bg-primary/10 border-primary" : "bg-surface-container border-outline-variant hover:bg-surface-variant"}`}
+                    data-vehicle-id={vehicle.id}
+                    key={vehicle.id}
+                  >
+                    <input
+                      type="radio"
+                      name="vehicleId"
+                      value={vehicle.id}
+                      class="hidden"
+                      data-vehicle-km={vehicle.km}
+                      checked={isSelected}
+                    />
+                    <div class="w-full h-24 mb-sm rounded-lg overflow-hidden bg-surface-container-lowest flex items-center justify-center">
+                      <span class="material-symbols-outlined text-[48px] text-secondary opacity-40 group-hover:scale-110 transition-transform">
+                        local_shipping
+                      </span>
+                    </div>
+                    <span class="font-label-md text-label-md text-primary">
+                      {vehicle.brand} {vehicle.model}
+                    </span>
+                    <span class="font-data-mono text-body-md text-on-surface-variant">
+                      {vehicle.plate}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )
+        }
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+        <div
+          class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
+        >
+          <div class="space-y-xs">
+            <label
+              class="font-label-md text-label-md text-on-surface-variant px-xs"
+              >Odómetro Actual (KM)</label
             >
-            <input
-              class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-md pl-11 pr-md focus:outline-none focus:border-primary text-body-md [color-scheme:dark]"
-              type="date"
-              value="2024-05-24"
-            />
+            <div class="relative">
+              <input
+                id="km-input"
+                name="km"
+                class="w-full font-data-mono bg-surface-container-lowest border border-outline-variant rounded-lg py-md px-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-body-md transition-all text-right pr-12"
+                placeholder="0"
+                type="number"
+                value={selectedVehicleId
+                  ? userVehicles.find((v) => v.id === selectedVehicleId)?.km ||
+                    ""
+                  : userVehicles[0]?.km || ""}
+                min="0"
+                required
+              />
+              <span
+                class="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md"
+                >KM</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <div
+          class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
+        >
+          <div class="space-y-xs">
+            <label
+              class="font-label-md text-label-md text-on-surface-variant px-xs"
+              >Fecha del Repostaje</label
+            >
+            <div class="relative group">
+              <span
+                class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary"
+              >
+                calendar_today
+              </span>
+              <input
+                name="date"
+                class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-md pl-11 pr-md focus:outline-none focus:border-primary text-body-md [color-scheme:dark]"
+                type="date"
+                value={today}
+                required
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
-    <!-- Refueling Specs -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
-      <div
-        class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
-      >
-        <div class="space-y-xs">
-          <div class="flex items-center justify-between">
-            <label class="font-label-md text-label-md text-on-surface-variant"
-              >Litros (L)</label
-            >
-            <span class="material-symbols-outlined text-secondary opacity-50"
-              >water_drop</span
-            >
-          </div>
-          <input
-            class="w-full font-data-mono bg-surface-container-lowest border border-outline-variant rounded-lg py-md px-md focus:outline-none focus:border-primary text-body-md text-right"
-            placeholder="0.00"
-            step="0.01"
-            type="number"
-          />
-        </div>
-      </div>
-      <div
-        class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
-      >
-        <div class="space-y-xs">
-          <div class="flex items-center justify-between">
-            <label class="font-label-md text-label-md text-on-surface-variant"
-              >Precio por Litro</label
-            >
-            <span class="material-symbols-outlined text-secondary opacity-50"
-              >payments</span
-            >
-          </div>
-          <div class="relative">
+
+      <!-- Refueling Specs -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
+        <div
+          class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
+        >
+          <div class="space-y-xs">
+            <div class="flex items-center justify-between">
+              <label class="font-label-md text-label-md text-on-surface-variant"
+                >Litros (L)</label
+              >
+              <span class="material-symbols-outlined text-secondary opacity-50"
+                >water_drop</span
+              >
+            </div>
             <input
-              class="w-full font-data-mono bg-surface-container-lowest border border-outline-variant rounded-lg py-md px-md focus:outline-none focus:border-primary text-body-md text-right pr-12"
-              placeholder="0.000"
-              step="0.001"
-              type="number"
-            />
-            <span
-              class="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md"
-              >€/L</span
-            >
-          </div>
-        </div>
-      </div>
-      <div
-        class="bg-surface-container-high rounded-xl p-lg border-2 border-primary/20 bg-primary/5 flex flex-col justify-between shadow-[0_0_20px_rgba(173,198,255,0.05)]"
-      >
-        <div class="space-y-xs">
-          <div class="flex items-center justify-between">
-            <label class="font-label-md text-label-md text-primary font-bold"
-              >Costo Total</label
-            >
-            <span class="material-symbols-outlined text-primary"
-              >account_balance_wallet</span
-            >
-          </div>
-          <div class="relative">
-            <input
-              class="w-full font-data-mono bg-surface-container-lowest border border-primary/40 rounded-lg py-md px-md focus:outline-none focus:border-primary text-headline-sm text-right pr-12 text-primary"
+              name="liters"
+              class="w-full font-data-mono bg-surface-container-lowest border border-outline-variant rounded-lg py-md px-md focus:outline-none focus:border-primary text-body-md text-right"
               placeholder="0.00"
               step="0.01"
               type="number"
+              min="0"
+              required
             />
-            <span
-              class="absolute right-md top-1/2 -translate-y-1/2 text-primary/70 font-label-md"
-              >€</span
-            >
+          </div>
+        </div>
+        <div
+          class="bg-surface-container-high rounded-xl p-lg border border-outline-variant flex flex-col justify-between"
+        >
+          <div class="space-y-xs">
+            <div class="flex items-center justify-between">
+              <label class="font-label-md text-label-md text-on-surface-variant"
+                >Precio por Litro</label
+              >
+              <span class="material-symbols-outlined text-secondary opacity-50"
+                >payments</span
+              >
+            </div>
+            <div class="relative">
+              <input
+                name="pricePerLiter"
+                class="w-full font-data-mono bg-surface-container-lowest border border-outline-variant rounded-lg py-md px-md focus:outline-none focus:border-primary text-body-md text-right pr-12"
+                placeholder="0.000"
+                step="0.001"
+                type="number"
+                min="0"
+                required
+              />
+              <span
+                class="absolute right-md top-1/2 -translate-y-1/2 text-on-surface-variant font-label-md"
+                >€/L</span
+              >
+            </div>
+          </div>
+        </div>
+        <div
+          class="bg-surface-container-high rounded-xl p-lg border-2 border-primary/20 bg-primary/5 flex flex-col justify-between shadow-[0_0_20px_rgba(173,198,255,0.05)]"
+        >
+          <div class="space-y-xs">
+            <div class="flex items-center justify-between">
+              <label class="font-label-md text-label-md text-primary font-bold"
+                >Costo Total</label
+              >
+              <span class="material-symbols-outlined text-primary"
+                >account_balance_wallet</span
+              >
+            </div>
+            <div class="relative">
+              <input
+                id="total-input"
+                name="total"
+                class="w-full font-data-mono bg-surface-container-lowest border border-primary/40 rounded-lg py-md px-md focus:outline-none focus:border-primary text-headline-sm text-right pr-12 text-primary"
+                placeholder="0.00"
+                step="0.01"
+                type="number"
+                min="0"
+                required
+              />
+              <span
+                class="absolute right-md top-1/2 -translate-y-1/2 text-primary/70 font-label-md"
+                >€</span
+              >
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Actions -->
-    <div
-      class="flex flex-col-reverse md:flex-row items-center justify-end gap-md pt-lg"
-    >
-      <button
-        class="w-full md:w-auto px-xl py-md rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-[0.98]"
-        type="button"
+      <!-- Actions -->
+      <div
+        class="flex flex-col-reverse md:flex-row items-center justify-end gap-md pt-lg"
       >
-        Cancelar
-      </button>
-      <button
-        class="w-full md:w-auto px-xl py-md bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98] flex items-center justify-center gap-sm"
-        type="submit"
-      >
-        <span class="material-symbols-outlined text-[18px]">save</span>
-        Guardar Repostaje
-      </button>
-    </div>
-  </form>
+        <a
+          href="/fuel"
+          class="w-full md:w-auto px-xl py-md rounded-lg font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-highest transition-colors active:scale-[0.98]"
+        >
+          Cancelar
+        </a>
+        <button
+          type="submit"
+          class="w-full md:w-auto px-xl py-md bg-primary text-on-primary rounded-lg font-label-md text-label-md hover:opacity-90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98] flex items-center justify-center gap-sm"
+        >
+          <span class="material-symbols-outlined text-[18px]">save</span>
+          Guardar Repostaje
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const vehicleCards = document.querySelectorAll(".vehicle-card");
+      const kmInput = document.getElementById("km-input") as HTMLInputElement;
+      const litersInput = document.querySelector(
+        'input[name="liters"]',
+      ) as HTMLInputElement;
+      const priceInput = document.querySelector(
+        'input[name="pricePerLiter"]',
+      ) as HTMLInputElement;
+      const totalInput = document.getElementById(
+        "total-input",
+      ) as HTMLInputElement;
+      const form = document.getElementById("fuelForm") as HTMLFormElement;
+
+      function calculateTotal() {
+        const liters = parseFloat(litersInput?.value || "0");
+        const price = parseFloat(priceInput?.value || "0");
+        if (liters > 0 && price > 0 && totalInput) {
+          totalInput.value = (liters * price).toFixed(2);
+        }
+      }
+
+      vehicleCards.forEach((card) => {
+        const radio = card.querySelector(
+          'input[type="radio"]',
+        ) as HTMLInputElement;
+
+        card.addEventListener("click", () => {
+          vehicleCards.forEach((c) => {
+            c.classList.remove("bg-primary/10", "border-primary");
+            c.classList.add("bg-surface-container", "border-outline-variant");
+          });
+          card.classList.remove(
+            "bg-surface-container",
+            "border-outline-variant",
+          );
+          card.classList.add("bg-primary/10", "border-primary");
+
+          const km = radio.dataset.vehicleKm;
+          if (km && kmInput) {
+            kmInput.value = km;
+          }
+        });
+      });
+
+      litersInput?.addEventListener("input", calculateTotal);
+      priceInput?.addEventListener("input", calculateTotal);
+
+      if (form) {
+        form.addEventListener("submit", () => {
+          const loader = document.getElementById("formLoader");
+          if (loader) {
+            loader.classList.remove("hidden");
+            loader.classList.add("flex");
+          }
+        });
+      }
+    });
+  </script>
 </AppLayout>
