@@ -25,7 +25,7 @@ const { vehicleId, itvStatus, itvDays } = Astro.props;
         <span class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
       </a>
       <a
-        href={`/maintenance/${vehicleId}?new=true`}
+        href={`/maintenance/new?vehicleId=${vehicleId}`}
         class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
       >
         <div class="flex items-center gap-md">

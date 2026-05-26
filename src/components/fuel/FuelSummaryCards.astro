@@ -1,5 +1,5 @@
 ---
-import StatCard from '@/components/ui/StatCard.astro';
+import StatCard from "@/components/ui/StatCard.astro";
 
 interface Props {
   totalCost: number;
@@ -12,15 +12,20 @@ interface Props {
   totalLiters?: number;
 }
 
-const { totalCost, avgConsumption, ctaHref, costTrend = null, consumptionTrend = null, refuelCount = 0, avgPricePerLiter = 0, totalLiters = 0 } = Astro.props;
+const {
+  totalCost,
+  avgConsumption,
+  ctaHref,
+  costTrend = null,
+  consumptionTrend = null,
+  refuelCount = 0,
+  avgPricePerLiter = 0,
+  totalLiters = 0,
+} = Astro.props;
 ---
 
 <div class="grid grid-cols-2 lg:grid-cols-6 gap-sm">
-  <StatCard
-    label="Cargas"
-    value={refuelCount}
-    icon="event"
-  />
+  <StatCard label="Cargas" value={refuelCount} icon="event" />
 
   <StatCard
     label="Litros Totales"
@@ -42,31 +47,44 @@ const { totalCost, avgConsumption, ctaHref, costTrend = null, consumptionTrend =
 
   <StatCard
     label="Consumo Medio"
-    value={avgConsumption > 0 ? avgConsumption.toFixed(1) : '—'}
+    value={avgConsumption > 0 ? avgConsumption.toFixed(1) : "—"}
     icon="check_circle"
-    suffix={avgConsumption > 0 ? 'L/100km' : undefined}
+    suffix={avgConsumption > 0 ? "L/100km" : undefined}
     trend={consumptionTrend}
     trendInverted
   />
 
   <StatCard
     label="Precio Medio/L"
-    value={avgPricePerLiter > 0 ? avgPricePerLiter.toFixed(3) : '—'}
+    value={avgPricePerLiter > 0 ? avgPricePerLiter.toFixed(3) : "—"}
     icon="sell"
     colorClass="text-warning"
     bgClass="bg-warning/10"
-    suffix={avgPricePerLiter > 0 ? '€' : undefined}
+    suffix={avgPricePerLiter > 0 ? "€" : undefined}
   />
-
-  <a
-    href={ctaHref}
-    class="bg-primary-container/10 border-2 border-dashed border-primary/30 rounded-xl p-md flex items-center justify-center gap-md group hover:bg-primary-container/20 hover:border-primary transition-all cursor-pointer"
+  <div
+    class="bg-surface-container border border-outline-variant rounded-xl p-md flex flex-col items-start justify-between hover:border-primary/50 transition-colors"
   >
-    <div class="w-10 h-10 bg-primary/20 text-primary rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-      <span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">add</span>
-    </div>
-    <div>
-      <h3 class="text-headline-sm text-primary">Registrar Carga</h3>
-    </div>
-  </a>
+    <h5
+      class="font-label-md text-label-md text-on-surface-variant uppercase mb-md"
+    >
+      Registrar Carga
+    </h5>
+    <a
+      href={`/fuel/new`}
+      class="w-full text-left p-md bg-surface-container-high hover:bg-surface-variant transition-colors rounded-lg flex items-center justify-between group border border-outline-variant/30"
+    >
+      <div class="flex items-center gap-md">
+        <span
+          class="material-symbols-outlined text-primary"
+          style="font-variation-settings: 'FILL' 1;">ev_station</span
+        >
+        <span class="font-label-md">Nuevo</span>
+      </div>
+      <span
+        class="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform"
+        >chevron_right</span
+      >
+    </a>
+  </div>
 </div>
