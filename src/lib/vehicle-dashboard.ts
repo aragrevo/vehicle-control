@@ -81,11 +81,12 @@ type ActivityItem = {
   label: string;
   details: string;
   cost: string | null;
+  odometer: number | null;
 };
 
 export function buildActivityTimeline(
   fuelLogs: Array<{ date: number | null; liters: number; total: number; km: number | null }>,
-  maintenances: Array<{ date: number | null; type: string; description: string | null; cost: number | null }>,
+  maintenances: Array<{ date: number | null; type: string; description: string | null; cost: number | null; km: number | null }>,
   limit = 8
 ): ActivityItem[] {
   const items: ActivityItem[] = [
@@ -95,7 +96,8 @@ export function buildActivityTimeline(
       iconColor: 'text-primary',
       label: 'Combustible',
       details: `${f.liters}L — ${f.total.toFixed(2)} €`,
-      cost: f.km ? `${f.km.toLocaleString()} km` : null,
+      cost: null,
+      odometer: f.km,
     })),
     ...maintenances.map((m): ActivityItem => ({
       date: m.date,
@@ -104,6 +106,7 @@ export function buildActivityTimeline(
       label: MAINTENANCE_TYPE_LABELS[m.type] || m.type,
       details: m.description || '—',
       cost: m.cost ? `${m.cost.toFixed(2)} €` : null,
+      odometer: m.km,
     })),
   ];
 
